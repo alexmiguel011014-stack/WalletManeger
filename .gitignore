@@ -1,0 +1,15 @@
+.gradle/
+.idea/
+.kotlin/
+build/
+**/build/
+local.properties
+*.iml
+*.apk
+*.aab
+*.jks
+*.keystore
+.env
+graphify-out/
+repomix-output.xml
+verification/
