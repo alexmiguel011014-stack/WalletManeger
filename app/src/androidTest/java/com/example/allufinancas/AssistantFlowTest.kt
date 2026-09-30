@@ -11,7 +11,6 @@ import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoRepository
-import com.example.allufinancas.data.DemoSeed
 import com.example.allufinancas.data.MessageRole
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -23,6 +22,7 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.time.YearMonth
 
 @RunWith(AndroidJUnit4::class)
 class AssistantFlowTest {
@@ -32,7 +32,7 @@ class AssistantFlowTest {
     @Before fun resetDemoState() = runBlocking {
         repository = DemoRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         withTimeout(15_000) { repository.ready.first { it } }
-        restoreDemoState()
+        seedLocalLedger(repository, InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     @After fun restoreDemoStateAfterTest() = runBlocking { restoreDemoState() }
@@ -50,6 +50,7 @@ class AssistantFlowTest {
         }
         assertTrue(answer.citationTransactionIds.isNotEmpty())
         rule.onNodeWithText("Ver fontes").performClick()
+        rule.onNodeWithText("ID t11 · Moradia Exemplo", substring = true).assertExists()
         rule.onNodeWithText("Moradia Exemplo · Casa", substring = true).assertExists()
         assertTrue(rule.onAllNodesWithText("2026-09-07", substring = true).fetchSemanticsNodes().isNotEmpty())
         assertTrue(rule.onAllNodesWithText("1.800,00", substring = true).fetchSemanticsNodes().isNotEmpty())
@@ -72,7 +73,7 @@ class AssistantFlowTest {
         rule.onNodeWithText("Sua pergunta").performTextInput("Quanto gastei em agosto?")
         rule.onNodeWithText("Enviar").performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Não consigo responder sobre outro período", substring = true)
+            rule.onAllNodesWithText("Não encontrei dados cadastrados para esse período", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
         val answer = runBlocking {
@@ -85,21 +86,13 @@ class AssistantFlowTest {
     }
 
     private fun enterAssistant() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Assistente").performClick()
-        rule.waitUntil(10_000) {
-            rule.onAllNodesWithText(
-                "Escopo: Assistente · movimentos, categorias e limites · período ${DemoSeed.MONTH}",
-                substring = true,
-            ).fetchSemanticsNodes().isNotEmpty() &&
-                rule.onAllNodesWithText("(hora local)", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
-        assertTrue(rule.onAllNodesWithText("Fonte local: exemplos fictícios", substring = true).fetchSemanticsNodes().isNotEmpty())
-        assertTrue(rule.onAllNodesWithText("Data editorial do pacote: ${DemoSeed.GENERATED_DATE}", substring = true).fetchSemanticsNodes().isNotEmpty())
-        assertTrue(rule.onAllNodesWithText("Materializado neste aparelho:", substring = true).fetchSemanticsNodes().isNotEmpty())
+        rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
+        rule.onNodeWithText("Escopo: Assistente local · período ${YearMonth.now()}", substring = true).assertExists()
     }
 
     private suspend fun restoreDemoState() {

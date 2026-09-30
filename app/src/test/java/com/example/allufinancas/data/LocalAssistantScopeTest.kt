@@ -19,7 +19,7 @@ class LocalAssistantScopeTest {
             assertFalse(prompt, DemoAnalysis.money(280_462) in answer.text)
         }
         assertTrue(LocalAssistant.answer("Quanto gastei em agosto?", DemoSeed.transactions, DemoSeed.categories, DemoSeed.budgets)
-            .text.contains("Não consigo responder sobre outro período"))
+            .text.contains("Não encontrei dados cadastrados para esse período"))
         assertTrue(LocalAssistant.answer("Quanto gastei em setembro de 2026?", DemoSeed.transactions, DemoSeed.categories, DemoSeed.budgets)
             .text.contains(DemoAnalysis.money(280_462)))
         assertTrue(LocalAssistant.answer("Quanto gastei em set/2026?", DemoSeed.transactions, DemoSeed.categories, DemoSeed.budgets)

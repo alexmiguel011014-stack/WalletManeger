@@ -6,6 +6,15 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class DemoRulesTest {
+    @Test fun categoryMustMatchTransactionAmountSign() {
+        assertTrue(TransactionCategoryRules.isCompatible("receita", 1))
+        assertFalse(TransactionCategoryRules.isCompatible("alimentacao", 1))
+        assertTrue(TransactionCategoryRules.isCompatible("alimentacao", -1))
+        assertFalse(TransactionCategoryRules.isCompatible("receita", -1))
+        assertEquals(listOf("receita"), TransactionCategoryRules.compatible(DefaultCategories.all, 1).map { it.id })
+        assertFalse(TransactionCategoryRules.compatible(DefaultCategories.all, -1).any { it.id == "receita" })
+    }
+
     @Test fun seededMonthHasReproducibleTotalsAndEmptyMonth() {
         val total = DemoAnalysis.monthSummary(DemoSeed.transactions, DemoSeed.MONTH)
         assertEquals(820_000, total.incomeCents)
@@ -154,8 +163,16 @@ class DemoRulesTest {
         assertEquals(listOf("t06", "t09", "t11"), recurring.citationTransactionIds)
 
         val disclosure = LocalAssistant.answer("Esses dados são reais do banco?", DemoSeed.transactions, DemoSeed.categories, DemoSeed.budgets)
-        assertTrue(disclosure.text.contains("exemplos fictícios"))
+        assertTrue(disclosure.text.contains("seus lançamentos, categorias e limites salvos neste aparelho"))
         assertTrue(disclosure.citationTransactionIds.isEmpty())
+    }
+
+    @Test fun unsupportedAssistantQuestionKeepsItsLimitWhenMonthHasNoData() {
+        val answer = LocalAssistant.answer("Qual é a minha cor favorita?", emptyList(), DemoSeed.categories, emptyList())
+        assertTrue(answer.text.contains("Só consigo calcular"))
+        assertFalse(answer.text.contains("Cadastre uma entrada ou saída"))
+        val supported = LocalAssistant.answer("Quanto gastei no mês?", emptyList(), DemoSeed.categories, emptyList())
+        assertTrue(supported.text.contains("Cadastre uma entrada ou saída"))
     }
 
     private fun tx(id: String, categoryId: String, amount: Long, date: String, recurring: Boolean = false) =

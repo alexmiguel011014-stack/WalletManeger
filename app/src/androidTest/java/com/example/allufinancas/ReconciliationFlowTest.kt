@@ -34,7 +34,7 @@ class ReconciliationFlowTest {
     @Before fun resetDemo() = runBlocking {
         repository = DemoRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         withTimeout(15_000) { repository.ready.first { it } }
-        repository.resetDemoData()
+        seedLocalLedger(repository, InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     @Test fun reviewOpensInsideAlertsAndSystemBackReturnsToAlerts() {
@@ -86,8 +86,8 @@ class ReconciliationFlowTest {
     }
 
     private fun openReview() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithContentDescription("Avisos").performClick()

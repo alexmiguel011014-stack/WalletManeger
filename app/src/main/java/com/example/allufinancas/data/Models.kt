@@ -1,17 +1,11 @@
 package com.example.allufinancas.data
 
-/** Every financial value in this app belongs to the bundled fictional demonstration. */
-interface DemoData {
-    val isDemo: Boolean get() = true
-    val dataSource: String get() = "Exemplo fictício armazenado neste dispositivo"
-}
-
 data class AccountSummary(
     val id: String,
     val name: String,
     val kind: String,
     val balanceCents: Long,
-) : DemoData
+)
 
 data class Transaction(
     val id: String,
@@ -26,7 +20,17 @@ data class Transaction(
     val recurring: Boolean = false,
     /** Category on the source row; categoryId may be a reversible local override. */
     val sourceCategoryId: String = categoryId,
-) : DemoData
+)
+
+object TransactionCategoryRules {
+    const val INCOME_CATEGORY_ID = "receita"
+
+    fun isCompatible(categoryId: String, amountCents: Long): Boolean =
+        (amountCents > 0) == (categoryId == INCOME_CATEGORY_ID)
+
+    fun compatible(categories: List<Category>, amountCents: Long): List<Category> =
+        categories.filter { isCompatible(it.id, amountCents) }
+}
 
 enum class ReviewKind { UNCATEGORIZED, POSSIBLE_DUPLICATE, UNUSUAL_AMOUNT }
 enum class ReviewStrength { LIMITED, MODERATE }
@@ -40,18 +44,18 @@ data class ReconciliationCase(
     val strength: ReviewStrength,
     val decided: Boolean = false,
     val selectedCategoryId: String? = null,
-) : DemoData
+)
 
 data class Category(
     val id: String,
     val name: String,
     val colorHex: String,
-) : DemoData
+)
 
 data class Budget(
     val categoryId: String,
     val limitCents: Long,
-) : DemoData
+)
 
 data class Insight(
     val id: String,
@@ -59,7 +63,7 @@ data class Insight(
     val explanation: String,
     val severity: InsightSeverity,
     val transactionIds: List<String> = emptyList(),
-) : DemoData
+)
 
 enum class InsightSeverity { INFO, WARNING, CRITICAL }
 
@@ -71,14 +75,14 @@ data class Alert(
     val transactionIds: List<String>,
     val generatedDate: String,
     val dismissed: Boolean = false,
-) : DemoData
+)
 
 data class Goal(
     val id: String,
     val name: String,
     val targetCents: Long,
     val savedCents: Long,
-) : DemoData
+)
 
 data class AssistantMessage(
     val id: Long = 0,
@@ -86,24 +90,24 @@ data class AssistantMessage(
     val text: String,
     val createdAt: String,
     val citationTransactionIds: List<String> = emptyList(),
-) : DemoData
+)
 
 enum class MessageRole { USER, ASSISTANT }
 
 data class AssistantAnswer(
     val text: String,
     val citationTransactionIds: List<String> = emptyList(),
-) : DemoData
+)
 
 data class MonthSummary(
     val month: String,
     val incomeCents: Long,
     val expenseCents: Long,
     val balanceCents: Long,
-) : DemoData
+)
 
 data class DisplayPreferences(
     val darkTheme: Boolean = false,
     val reduceMotion: Boolean = false,
     val showCents: Boolean = true,
-) : DemoData
+)

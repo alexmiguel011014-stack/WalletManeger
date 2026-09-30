@@ -24,6 +24,7 @@ import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.navigation.*
 import java.math.BigDecimal
 import java.time.Instant
+import java.time.YearMonth
 
 internal object BudgetAmount {
     private val brazilianAmount = Regex("""(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?""")
@@ -42,23 +43,31 @@ internal object BudgetAmount {
 @Composable internal fun Budgets(
     transactions: List<Transaction>, categories: List<Category>, budgets: List<Budget>,
     goals: List<Goal>, settings: DisplayPreferences, materializedAt: Instant?, onUpdate: (String, Long) -> Unit,
-    onRestoreDemo: () -> Unit,
 ) {
     var editingCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
     var amount by rememberSaveable { mutableStateOf("") }
     var scenarioCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
     var scenarioAmount by rememberSaveable { mutableStateOf("") }
-    var confirmRestore by rememberSaveable { mutableStateOf(false) }
+    var chooseCategory by rememberSaveable { mutableStateOf(false) }
     val editing = budgets.firstOrNull { it.categoryId == editingCategoryId }
+    val editingCategory = categories.firstOrNull { it.id == editingCategoryId }
+    val month = YearMonth.now().toString()
+    val availableCategories = categories.filter { category -> category.id != "receita" && budgets.none { it.categoryId == category.id } }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { DemoStrip("Limites e metas · Setembro/2026", materializedAt) }
-        item { Text("Planeje sem perder a origem dos números.", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+        item { DemoStrip("Limites por categoria · $month", materializedAt) }
+        item { Text("Defina limites para seus gastos registrados.", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+        item {
+            Button(onClick = { chooseCategory = true }, enabled = availableCategories.isNotEmpty(), modifier = Modifier.fillMaxWidth()) {
+                Text("Adicionar limite")
+            }
+        }
         item {
             BudgetScenarioPanel(
                 transactions = transactions,
                 categories = categories,
                 budgets = budgets,
                 showCents = settings.showCents,
+                month = month,
                 selectedCategoryId = scenarioCategoryId,
                 amount = scenarioAmount,
                 onCategorySelected = { scenarioCategoryId = it; scenarioAmount = "" },
@@ -66,10 +75,10 @@ internal object BudgetAmount {
                 onClear = { scenarioCategoryId = null; scenarioAmount = "" },
             )
         }
-        if (budgets.isEmpty()) item { Panel { Text("Nenhum limite de exemplo disponível.") } }
+        if (budgets.isEmpty()) item { EmptyState("Nenhum limite cadastrado", "Escolha uma categoria para começar a acompanhar seus gastos.") }
         items(budgets) { budget ->
             val category = categories.firstOrNull { it.id == budget.categoryId }
-            val spent = DemoAnalysis.categorySpentCents(transactions, budget.categoryId, DemoSeed.MONTH)
+            val spent = DemoAnalysis.categorySpentCents(transactions, budget.categoryId, month)
             Panel {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(category?.name ?: "Categoria", fontWeight = FontWeight.Bold)
@@ -83,11 +92,11 @@ internal object BudgetAmount {
                 Spacer(Modifier.height(10.dp))
                 LinearProgressIndicator(progress = { (spent.toFloat() / budget.limitCents.coerceAtLeast(1)).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                Text("Despesas fictícias de setembro/2026; sem previsão de gastos futuros.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                TextButton(onClick = { editingCategoryId = budget.categoryId; amount = java.math.BigDecimal.valueOf(budget.limitCents, 2).toPlainString().replace('.', ',') }) { Text("Alterar limite") }
+                Text("Despesas registradas em $month; sem previsão de gastos futuros.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                TextButton(onClick = { editingCategoryId = budget.categoryId; amount = BigDecimal.valueOf(budget.limitCents, 2).toPlainString().replace('.', ',') }) { Text("Alterar limite") }
             }
         }
-        if (goals.isNotEmpty()) item { Heading("Metas de exemplo") }
+        if (goals.isNotEmpty()) item { Heading("Metas") }
         items(goals) { goal ->
             Panel {
                 Text(goal.name, fontWeight = FontWeight.Bold)
@@ -96,43 +105,45 @@ internal object BudgetAmount {
                 LinearProgressIndicator(progress = { (goal.savedCents.toFloat() / goal.targetCents.coerceAtLeast(1)).coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
             }
         }
-        item {
-            Panel {
-                Text("Reiniciar demonstração", fontWeight = FontWeight.Bold)
-                Text("Restaura TODOS os dados fictícios locais para os exemplos iniciais.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = { confirmRestore = true }) { Text("Restaurar dados fictícios") }
-            }
-        }
     }
-    editing?.let { budget ->
+    if (chooseCategory) AlertDialog(
+        onDismissRequest = { chooseCategory = false },
+        title = { Text("Escolha uma categoria") },
+        text = {
+            Column {
+                if (availableCategories.isEmpty()) Text("Todas as categorias de despesa já têm limite.")
+                availableCategories.forEach { category ->
+                    TextButton(onClick = {
+                        editingCategoryId = category.id
+                        amount = ""
+                        chooseCategory = false
+                    }) { Text(category.name) }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = { chooseCategory = false }) { Text("Fechar") } },
+    )
+    editingCategory?.let { category ->
         val parsed = BudgetAmount.parseCents(amount)
         AlertDialog(
             onDismissRequest = { editingCategoryId = null },
-            title = { Text("Alterar limite fictício") },
+            title = { Text(if (editing == null) "Novo limite · ${category.name}" else "Alterar limite · ${category.name}") },
             text = {
                 Column {
-                    Text("Limite aplicado aos gastos fictícios de setembro/2026.")
+                    Text("Limite para as despesas cadastradas no mês atual.")
                     OutlinedTextField(amount, { amount = it }, label = { Text("Valor em reais") }, singleLine = true)
                     if (parsed == null) Text("Informe um valor positivo válido, por exemplo 1.000,00.", color = MaterialTheme.colorScheme.secondary, fontSize = 12.sp)
                 }
             },
             confirmButton = {
                 TextButton(enabled = parsed != null && parsed > 0, onClick = {
-                    parsed?.let { onUpdate(budget.categoryId, it) }
+                    parsed?.let { onUpdate(category.id, it) }
                     editingCategoryId = null
                 }) { Text("Salvar") }
             },
             dismissButton = { TextButton(onClick = { editingCategoryId = null }) { Text("Cancelar") } },
         )
     }
-    ConfirmationSheet(
-        visible = confirmRestore,
-        title = "Restaurar TODOS os dados fictícios?",
-        message = "Esta ação substitui todos os dados fictícios locais — contas, lançamentos, limites, metas, categorias, avisos e conversa — pelos exemplos iniciais.",
-        confirmLabel = "Restaurar tudo",
-        onConfirm = onRestoreDemo,
-        onDismiss = { confirmRestore = false },
-    )
 }
 
 @Composable
@@ -141,6 +152,7 @@ private fun BudgetScenarioPanel(
     categories: List<Category>,
     budgets: List<Budget>,
     showCents: Boolean,
+    month: String,
     selectedCategoryId: String?,
     amount: String,
     onCategorySelected: (String) -> Unit,
@@ -151,7 +163,7 @@ private fun BudgetScenarioPanel(
     val selectedBudget = budgets.firstOrNull { it.categoryId == selectedCategoryId }
     val selectedCategory = categories.firstOrNull { it.id == selectedCategoryId }
     val spentCents = selectedBudget?.let {
-        DemoAnalysis.categorySpentCents(transactions, it.categoryId, DemoSeed.MONTH)
+        DemoAnalysis.categorySpentCents(transactions, it.categoryId, month)
     }
     val proposedCents = BudgetAmount.parseCents(amount)
     val scenario = if (selectedBudget != null && spentCents != null && proposedCents != null) {
@@ -209,7 +221,7 @@ private fun BudgetScenarioPanel(
                 style = MaterialTheme.typography.bodySmall,
             )
             amount.isBlank() -> Text(
-                "Digite um limite positivo para ver a conta com o gasto de setembro/2026.",
+                "Digite um limite positivo para comparar com os gastos de $month.",
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
             )
@@ -226,7 +238,7 @@ private fun BudgetScenarioPanel(
             else -> {
                 Text(
                     "Limite hipotético: ${brl(scenario.hypotheticalLimitCents, showCents)} − " +
-                        "gasto registrado em set/2026: ${brl(scenario.spentCents, showCents)} = " +
+                        "gasto registrado em $month: ${brl(scenario.spentCents, showCents)} = " +
                         "saldo hipotético: ${brl(scenario.hypotheticalBalanceCents, showCents)}",
                     style = MaterialTheme.typography.bodyMedium,
                 )

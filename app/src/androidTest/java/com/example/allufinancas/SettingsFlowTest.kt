@@ -18,7 +18,6 @@ import androidx.compose.ui.state.ToggleableState
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoRepository
-import com.example.allufinancas.data.DemoSeed
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -54,21 +53,21 @@ class SettingsFlowTest {
     }
 
     @Test fun privacyEducationIsReachableFromWelcomeAndSettings() {
-        rule.waitUntil(15_000) { rule.onAllNodesWithText("Privacidade e dados de exemplo").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("Privacidade e dados de exemplo").performClick()
+        rule.waitUntil(15_000) { rule.onAllNodesWithText("Privacidade e dados locais").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Privacidade e dados locais").performClick()
         assertPrivacyEducationVisible()
 
         rule.onNodeWithText("Voltar").performClick()
-        rule.onNodeWithText("Explorar demonstração").performClick()
+        rule.onNodeWithText("Começar a cadastrar").performClick()
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Ajustes").performClick()
         assertSettingsPrivacyCopy()
-        assertNoExportOrDeleteAction()
+        assertNoExportAction()
         rule.onNodeWithText("Privacidade e limitações").performClick()
         assertPrivacyEducationVisible()
     }
 
-    @Test fun preferencesSurviveRecreationAndDataResetCanBeCancelledOrConfirmed() {
+    @Test fun preferencesSurviveRecreationAndLocalDataDeletionCanBeCancelledOrConfirmed() {
         enterSettings()
         rule.waitUntil(10_000) {
             rule.onAllNodesWithText("Preferência de exibição").fetchSemanticsNodes().isNotEmpty()
@@ -102,7 +101,7 @@ class SettingsFlowTest {
         }
         openResetConfirmation()
         rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
-        assertTrue(rule.onAllNodesWithText("Restaurar demonstração?").fetchSemanticsNodes().isEmpty())
+        assertTrue(rule.onAllNodesWithText("Excluir todos os dados locais?").fetchSemanticsNodes().isEmpty())
         runBlocking {
             assertEquals(100_000, repository.budgets.first().first { it.categoryId == "alimentacao" }.limitCents)
             assertTrue(repository.messages.first().isNotEmpty())
@@ -111,18 +110,17 @@ class SettingsFlowTest {
         openResetConfirmation()
         assertEquals(
             2,
-            rule.onAllNodesWithText("remove alterações locais da demonstração e mensagens digitadas", substring = true, useUnmergedTree = true)
+            rule.onAllNodesWithText("Apaga seus lançamentos, limites, metas, avisos, decisões e mensagens", substring = true, useUnmergedTree = true)
                 .fetchSemanticsNodes().size,
         )
-        rule.onNodeWithText("Não afeta bancos, WhatsApp nem outros apps", substring = true, useUnmergedTree = true).assertExists()
-        rule.onNodeWithText("Preferências de exibição e a escolha de entrada inicial serão preservadas", substring = true, useUnmergedTree = true).assertExists()
-        rule.onNodeWithText("Restaurar", useUnmergedTree = true).performClick()
+        rule.onNodeWithText("As categorias padrão, preferências de exibição e escolha de entrada inicial serão preservadas", substring = true, useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("Excluir dados", useUnmergedTree = true).performClick()
         runBlocking {
             withTimeout(10_000) {
-                repository.budgets.first {
-                    it.associateBy { budget -> budget.categoryId } == DemoSeed.budgets.associateBy { budget -> budget.categoryId }
-                }
+                repository.budgets.first { it.isEmpty() }
             }
+            withTimeout(10_000) { repository.transactions.first { it.isEmpty() } }
+            withTimeout(10_000) { repository.categories.first { it.isNotEmpty() } }
             withTimeout(10_000) { repository.messages.first { it.isEmpty() } }
             val preferences = repository.preferences.first()
             assertTrue(preferences.darkTheme && preferences.reduceMotion && !preferences.showCents)
@@ -137,30 +135,26 @@ class SettingsFlowTest {
 
     private fun assertPrivacyEducationVisible() {
         rule.onNodeWithText("Privacidade e conexões").assertExists()
-        rule.onNodeWithText("não se conecta a bancos", substring = true).assertExists()
-        rule.onNodeWithText("integração ativa com WhatsApp", substring = true).assertExists()
-        rule.onNodeWithText("Não há coleta ou envio de dados externos", substring = true).assertExists()
-        rule.onNodeWithText("Dados financeiros são fictícios e ficam neste dispositivo", substring = true).assertExists()
-        rule.onNodeWithText("O texto digitado no chat também fica neste dispositivo, mas pode não ser fictício", substring = true).assertExists()
-        rule.onNodeWithText("Exportar dados e excluir itens individualmente não estão disponíveis", substring = true).assertExists()
-        rule.onNodeWithText("possibilidade conceitual, não uma promessa", substring = true).assertExists()
-        rule.onNodeWithText("consentimento explícito", substring = true).assertExists()
-        assertNoExportOrDeleteAction()
+        rule.onNodeWithText("Não há conexão com bancos", substring = true).assertExists()
+        rule.onNodeWithText("nem integração com WhatsApp", substring = true).assertExists()
+        rule.onNodeWithText("O que você cadastrar", substring = true).assertExists()
+        rule.onNodeWithText("não envia esses dados para serviços externos", substring = true).assertExists()
+        rule.onNodeWithText("ainda não há exportação", substring = true).assertExists()
+        rule.onNodeWithText("autorização explícita", substring = true).assertExists()
+        assertNoExportAction()
     }
 
     private fun assertSettingsPrivacyCopy() {
-        rule.onNodeWithText("Os dados financeiros de exemplo são fictícios e ficam neste dispositivo", substring = true).assertExists()
-        rule.onNodeWithText("O texto digitado no chat também fica local, mas pode não ser fictício", substring = true).assertExists()
-        rule.onNodeWithText("Exportar dados e excluir itens individualmente não estão disponíveis", substring = true).assertExists()
+        rule.onNodeWithText("Lançamentos, limites e mensagens do assistente ficam salvos neste dispositivo", substring = true).assertExists()
+        rule.onNodeWithText("A exportação de dados ainda não está disponível", substring = true).assertExists()
+        rule.onNodeWithText("Excluir todos os dados").assertExists()
     }
 
-    private fun assertNoExportOrDeleteAction() {
-        listOf("Exportar", "Excluir").forEach { actionText ->
-            val actionableMatches = rule.onAllNodesWithText(actionText, substring = true)
-                .fetchSemanticsNodes()
-                .count { it.config.contains(SemanticsActions.OnClick) }
-            assertEquals("Não deve existir ação: $actionText", 0, actionableMatches)
-        }
+    private fun assertNoExportAction() {
+        val exportActions = rule.onAllNodesWithText("Exportar", substring = true)
+            .fetchSemanticsNodes()
+            .count { it.config.contains(SemanticsActions.OnClick) }
+        assertEquals("Não deve existir ação de exportação", 0, exportActions)
     }
 
     private fun waitForToggle(label: String, expected: ToggleableState) {
@@ -173,16 +167,16 @@ class SettingsFlowTest {
     }
 
     private fun enterSettings() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Ajustes").performClick()
     }
 
     private fun openResetConfirmation() {
-        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Restaurar demonstração", substring = true))
-        rule.onNodeWithText("Restaurar demonstração")
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Excluir todos os dados", substring = true))
+        rule.onNodeWithText("Excluir todos os dados")
             .performSemanticsAction(SemanticsActions.OnClick) { it() }
     }
 

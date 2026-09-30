@@ -20,29 +20,27 @@ import com.example.allufinancas.data.*
 import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.navigation.*
 import java.time.Instant
+import java.time.YearMonth
 import kotlin.math.roundToInt
 
 @Composable internal fun Home(
-    accounts: List<AccountSummary>, transactions: List<Transaction>, categories: List<Category>,
+    transactions: List<Transaction>, categories: List<Category>,
     budgets: List<Budget>, alerts: List<Alert>, goals: List<Goal>, settings: DisplayPreferences,
     materializedAt: Instant?,
     navigate: (Page) -> Unit,
     onOpenTransaction: (String) -> Unit,
 ) {
-    val months = transactions.map { it.date.take(7) }.distinct().sortedDescending()
+    val currentMonth = YearMonth.now().toString()
+    val months = (transactions.map { it.date.take(7) } + currentMonth).distinct().sortedDescending()
     var savedMonth by rememberSaveable { mutableStateOf("") }
-    val month = savedMonth.takeIf { it in months } ?: months.firstOrNull().orEmpty()
-    val projection = DemoAnalysis.homeProjection(accounts, transactions, categories, budgets, alerts, goals, month)
+    val month = savedMonth.takeIf { it in months } ?: currentMonth
+    val projection = DemoAnalysis.homeProjection(emptyList(), transactions, categories, budgets, alerts, goals, month)
     val observedSummary = financialHealthSummary(transactions, categories, budgets, month)
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            val monthScope = month.ifEmpty { "mês indisponível" }
-            DemoStrip(
-                "Início · saldos snapshot + entradas/saídas $monthScope + limites/metas",
-                materializedAt,
-            )
+            DemoStrip("Início · período $month", materializedAt)
         }
-        item { GreetingHeader("Visão geral", "Seu panorama", "Saldos e gastos fictícios deste período.") }
+        item { GreetingHeader("Visão geral", "Seu panorama", "Seus lançamentos e limites cadastrados neste dispositivo.") }
         item {
             Surface(color = AlluNavy, shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(22.dp)) {
@@ -52,9 +50,9 @@ import kotlin.math.roundToInt
                         Text("ALLU FINANÇAS", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     }
                     Spacer(Modifier.height(25.dp))
-                    Text("Saldo das contas · snapshot", color = AlluTint, fontSize = 13.sp)
-                    Text(brl(accounts.sumOf { it.balanceCents }, settings.showCents), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold, maxLines = 1)
-                    Text("Valor atual do pacote fictício; não representa um histórico mensal.", color = AlluTint, fontSize = 12.sp)
+                    Text("Saldo líquido dos lançamentos", color = AlluTint, fontSize = 13.sp)
+                    Text(brl(DemoAnalysis.balanceCents(transactions), settings.showCents), color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+                    Text("Soma acumulada das entradas e saídas cadastradas.", color = AlluTint, fontSize = 12.sp)
                     Spacer(Modifier.height(20.dp))
                     Row {
                         Column(Modifier.weight(1f)) { Text("Entradas no período", color = AlluTint, fontSize = 12.sp); Text(brl(projection.monthSummary.incomeCents, settings.showCents), color = Color.White, fontWeight = FontWeight.SemiBold) }
@@ -80,18 +78,9 @@ import kotlin.math.roundToInt
             }
         }
         item {
-            ChartContainer("Contas de exemplo", description = "Saldos fictícios armazenados neste aparelho.") {
-                if (accounts.isEmpty()) EmptyState("Ainda preparando", "Os dados locais serão exibidos em instantes.")
-                accounts.forEachIndexed { index, account ->
-                    if (index > 0) HorizontalDivider(Modifier.padding(vertical = 9.dp))
-                    AmountRow(account.name, brl(account.balanceCents, settings.showCents))
-                }
-            }
-        }
-        item {
             ChartContainer("Despesas por categoria", description = "Valores e proporção das despesas do mês selecionado.") {
                 if (projection.expensesByCategory.isEmpty() || projection.monthSummary.expenseCents == 0L) {
-                    EmptyState("Sem despesas neste período", "Não há despesas fictícias para este mês.")
+                    EmptyState("Sem despesas neste período", "Cadastre uma saída no extrato para acompanhar seus gastos.", actionLabel = "Ir ao extrato", onAction = { navigate(Page.TRANSACTIONS) })
                 } else projection.expensesByCategory.forEach { category ->
                     val share = (category.spentCents.toFloat() / projection.monthSummary.expenseCents).coerceIn(0f, 1f)
                     val percentage = (share * 100).roundToInt()
@@ -112,9 +101,9 @@ import kotlin.math.roundToInt
             Heading("Seu panorama", "Ver planos") { navigate(Page.BUDGETS) }
             Panel {
                 val budget = budgets.firstOrNull()
-                if (budget == null) Text("Nenhum limite neste exemplo.")
+                if (budget == null) EmptyState("Nenhum limite cadastrado", "Crie um limite por categoria em Planos.", actionLabel = "Criar limite", onAction = { navigate(Page.BUDGETS) })
                 else {
-                    val spent = projection.expensesByCategory.firstOrNull { it.categoryId == budget.categoryId }?.spentCents ?: 0L
+                    val spent = DemoAnalysis.categorySpentCents(transactions, budget.categoryId, currentMonth)
                     Text(categories.firstOrNull { it.id == budget.categoryId }?.name ?: "Categoria", fontWeight = FontWeight.Bold)
                     Text(brl(spent, settings.showCents) + " de " + brl(budget.limitCents, settings.showCents), color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (spent > budget.limitCents) Text(
@@ -153,7 +142,7 @@ import kotlin.math.roundToInt
         item {
             Heading("Movimentos recentes", "Ver extrato") { navigate(Page.TRANSACTIONS) }
             Panel {
-                if (projection.recentTransactions.isEmpty()) EmptyState("Nenhum movimento neste período", "Selecione um mês com dados fictícios.")
+                if (projection.recentTransactions.isEmpty()) EmptyState("Nenhum lançamento neste período", "Adicione sua primeira entrada ou saída para ver o extrato aqui.", actionLabel = "Ir ao extrato", onAction = { navigate(Page.TRANSACTIONS) })
                 projection.recentTransactions.take(3).forEach { TransactionLine(it, categories, settings.showCents) }
             }
         }

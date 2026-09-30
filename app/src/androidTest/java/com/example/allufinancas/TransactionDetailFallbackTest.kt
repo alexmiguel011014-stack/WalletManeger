@@ -23,24 +23,19 @@ import java.time.Instant
 class TransactionDetailFallbackTest {
     @get:Rule val rule = createAndroidComposeRule<TransactionFallbackTestActivity>()
 
-    @Test fun optionalSyncAndCoverageAppearOnlyWhenProvided() {
+    @Test fun localSourceAndScopeAreShown() {
         val materializedAt = Instant.parse("2026-09-29T12:00:00Z")
         rule.setContent {
             AlluTheme {
                 Column {
                     DemoStrip("Sem adicionais", materializedAt)
-                    DemoStrip(
-                        "Com adicionais",
-                        materializedAt,
-                        lastSyncAt = Instant.parse("2026-09-29T12:30:00Z"),
-                        coverageNote = "janela de teste",
-                    )
+                    DemoStrip("Com adicionais", materializedAt)
                 }
             }
         }
 
-        assertEquals(1, rule.onAllNodesWithText("Última sincronização:", substring = true).fetchSemanticsNodes().size)
-        assertEquals(1, rule.onAllNodesWithText("Cobertura:", substring = true).fetchSemanticsNodes().size)
+        assertEquals(2, rule.onAllNodesWithText("DADOS LOCAIS", substring = true).fetchSemanticsNodes().size)
+        assertEquals(2, rule.onAllNodesWithText("Fonte: lançamentos cadastrados neste dispositivo", substring = true).fetchSemanticsNodes().size)
     }
 
     @Test fun unknownTransactionIdShowsRecoveryActionInsteadOfCrashing() {
@@ -53,6 +48,8 @@ class TransactionDetailFallbackTest {
                     settings = DisplayPreferences(),
                     onBack = { returnedToTransactions.set(true) },
                     onCategory = { _, _ -> },
+                    onSave = {},
+                    onDelete = {},
                 )
             }
         }

@@ -1,5 +1,6 @@
 package com.example.allufinancas.data
 
+/** Seed-shaped records exist only as deterministic unit-test fixtures. */
 object DemoSeed {
     const val MONTH = "2026-09"
     const val GENERATED_DATE = "2026-09-23"
@@ -9,17 +10,7 @@ object DemoSeed {
         AccountSummary("reserva-demo", "Reserva de exemplo", "Reserva fictícia", 562_000),
         AccountSummary("cartao-demo", "Cartão de exemplo", "Fatura fictícia", -128_000),
     )
-
-    val categories = listOf(
-        Category("alimentacao", "Alimentação", "#EF7D3C"),
-        Category("casa", "Casa", "#7189F5"),
-        Category("saude", "Saúde", "#39A885"),
-        Category("assinaturas", "Assinaturas", "#AA78DC"),
-        Category("transporte", "Transporte", "#4BA6D8"),
-        Category("compras", "Compras", "#E5AF47"),
-        Category("receita", "Receita", "#38A47B"),
-    )
-
+    val categories = DefaultCategories.all
     val transactions = listOf(
         Transaction("t01", "conta-demo", "Empresa Exemplo", "Salário fictício", 820_000, "2026-09-05", "receita"),
         Transaction("t02", "conta-demo", "Mercado Exemplo", "Compra da semana", -35_642, "2026-09-21", "alimentacao"),
@@ -34,12 +25,6 @@ object DemoSeed {
         Transaction("t11", "conta-demo", "Moradia Exemplo", "Aluguel fictício", -180_000, "2026-09-07", "casa", recurring = true),
         Transaction("t12", "cartao-demo", "Loja Exemplo", "Compra de teste", -7_250, "2026-08-26", "compras"),
     )
-
-    val budgets = listOf(
-        Budget("alimentacao", 50_000),
-        Budget("assinaturas", 12_000),
-        Budget("transporte", 30_000),
-    )
-
+    val budgets = listOf(Budget("alimentacao", 50_000), Budget("assinaturas", 12_000), Budget("transporte", 30_000))
     val goals = listOf(Goal("reserva", "Reserva de exemplo", 300_000, 85_000))
 }

@@ -1,6 +1,6 @@
 # ALLU Finanças
 
-An original Android finance-companion prototype inspired by public product workflows, with the ALLU ERP visual identity authorized by the owner. It is an **offline demonstration using fictional data**. Balances, transactions, alerts, and assistant answers are not from a bank. There is no login, Open Finance connection, payment, WhatsApp integration, investment advice, or personal-data upload.
+An offline personal-finance ledger using the ALLU visual identity authorized by the owner. New installs contain no financial records; the app keeps only built-in categories so a user can begin adding transactions and budgets. Data is stored in a local Room database on the device.
 
 The current deliverable is a debug APK for local evaluation, not a production-signed financial app. “ALLU Finanças” is a working name. The final release name, application ID, signing arrangement, and distribution decision remain open; the code uses a temporary development ID.
 
@@ -19,9 +19,9 @@ The APK is produced at `app\build\outputs\apk\debug\app-debug.apk`. Install on a
 
 ## Evaluation
 
-Open the app and choose to explore the demo. Verify that the dashboard, transactions, budgets, insights, assistant, and settings consistently say the values are fictional. Edit a budget and a transaction category, dismiss and reopen an alert, ask a supported and an unsupported question, then reset the demo data. Those edits should remain local and reset only the bundled fictional seed.
+Start from an empty ledger. Add an income and an expense, check that the balance and current-month totals update, edit and delete a transaction, then create a category budget. Restart the app to confirm local data persists. Settings can delete local transactions, budgets, goals, alerts, review decisions, and assistant messages while keeping built-in categories and display preferences.
 
-The local assistant supports six demo intents: total spent in the month, total by category, largest expense, recurring charges, remaining category budget, and an explanation of the fictional data source. Other questions receive a limitation message; no model or external API is called.
+The local assistant calculates monthly totals, category totals, largest expense, recurring transactions, remaining category budget, and explains its local data source. It gives setup guidance when the requested period has no records. No model, bank connection, or external API is called.
 
 The [product brief](PRODUCT.md), [design brief](DESIGN.md), and [execution plan](GOALS.md) describe decisions and remaining acceptance work. Final visual sign-off requires the owner to review the installed Android screens. Real integrations, signing, and publication would require a separate security/legal/product plan.
 

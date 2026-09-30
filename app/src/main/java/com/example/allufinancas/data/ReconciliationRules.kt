@@ -1,11 +1,13 @@
 package com.example.allufinancas.data
 
-/** Explainable rules over the bundled sample; these flags are not fraud findings. */
+import java.time.YearMonth
+
+/** Explainable rules over local user-entered transactions; these flags are not fraud findings. */
 object ReconciliationRules {
     fun cases(
         transactions: List<Transaction>,
         decisions: List<ReconciliationDecisionRow> = emptyList(),
-        month: String = DemoSeed.MONTH,
+        month: String = YearMonth.now().toString(),
     ): List<ReconciliationCase> {
         val sample = if (month.isBlank()) emptyList() else transactions.filter { it.date.startsWith(month) }
         val decidedById = decisions.associateBy { it.caseId }
@@ -15,7 +17,7 @@ object ReconciliationRules {
                 id = id,
                 kind = ReviewKind.UNCATEGORIZED,
                 title = "Escolha uma categoria",
-                explanation = "O lançamento de exemplo não tem categoria na origem. A escolha fica como ajuste local; valor e data não mudam.",
+                explanation = "Este lançamento não tem categoria. A escolha fica salva localmente; valor e data não mudam.",
                 transactionIds = listOf(transaction.id),
                 strength = ReviewStrength.LIMITED,
                 decided = id in decidedById,
@@ -24,7 +26,7 @@ object ReconciliationRules {
         }
         val ruleCases = DemoAnalysis.insights(
             sample.map { it.copy(categoryId = it.sourceCategoryId) },
-            DemoSeed.categories,
+            DefaultCategories.all,
             emptyList(),
             month,
         ).mapNotNull { insight ->
@@ -34,8 +36,8 @@ object ReconciliationRules {
                 else -> null
             } ?: return@mapNotNull null
             val extraExplanation = when (kind) {
-                ReviewKind.POSSIBLE_DUPLICATE -> " Coincidência qualitativa de estabelecimento, valor e data nesta amostra; confira os dois registros. Não confirma cobrança duplicada."
-                ReviewKind.UNUSUAL_AMOUNT -> " Sinal qualitativo limitado à amostra fictícia deste mês; não indica fraude ou irregularidade."
+                ReviewKind.POSSIBLE_DUPLICATE -> " Coincidência de estabelecimento, valor e data; confira os registros. Não confirma cobrança duplicada."
+                ReviewKind.UNUSUAL_AMOUNT -> " Sinal qualitativo limitado aos lançamentos deste mês; não indica fraude ou irregularidade."
                 ReviewKind.UNCATEGORIZED -> ""
             }
             val existing = decidedById[insight.id]

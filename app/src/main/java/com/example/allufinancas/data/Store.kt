@@ -87,6 +87,7 @@ interface DemoDao {
     @Query("SELECT * FROM reconciliation_decisions ORDER BY caseId") fun reconciliationDecisions(): Flow<List<ReconciliationDecisionRow>>
 
     @Query("SELECT COUNT(*) FROM accounts") suspend fun accountCount(): Int
+    @Query("SELECT COUNT(*) FROM categories") suspend fun categoryCount(): Int
     @Query("SELECT * FROM transactions") suspend fun allTransactions(): List<TransactionRow>
     @Query("SELECT * FROM categories") suspend fun allCategories(): List<CategoryRow>
     @Query("SELECT * FROM budgets") suspend fun allBudgets(): List<BudgetRow>
@@ -103,7 +104,9 @@ interface DemoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putReconciliationDecision(row: ReconciliationDecisionRow)
 
     @Query("DELETE FROM reconciliation_decisions WHERE caseId = :caseId") suspend fun deleteReconciliationDecision(caseId: String): Int
+    @Query("DELETE FROM reconciliation_decisions WHERE kind IN ('POSSIBLE_DUPLICATE', 'UNUSUAL_AMOUNT')") suspend fun clearRuleDecisions()
     @Query("UPDATE alerts SET dismissed = :dismissed WHERE id = :id") suspend fun setAlertDismissed(id: String, dismissed: Boolean): Int
+    @Query("DELETE FROM transactions WHERE id = :id") suspend fun deleteTransaction(id: String): Int
     @Query("DELETE FROM accounts") suspend fun clearAccounts()
     @Query("DELETE FROM transactions") suspend fun clearTransactions()
     @Query("DELETE FROM categories") suspend fun clearCategories()
@@ -116,7 +119,7 @@ interface DemoDao {
 
 @Database(
     entities = [AccountRow::class, TransactionRow::class, CategoryRow::class, BudgetRow::class, AlertRow::class, GoalRow::class, MessageRow::class, ReconciliationDecisionRow::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(DemoConverters::class)
@@ -136,15 +139,28 @@ abstract class DemoDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                listOf("accounts", "transactions", "budgets", "alerts", "goals", "assistant_messages", "reconciliation_decisions", "categories")
+                    .forEach { db.execSQL("DELETE FROM $it") }
+                DefaultCategories.all.forEach { category ->
+                    db.execSQL(
+                        "INSERT INTO categories (id, name, colorHex) VALUES (?, ?, ?)",
+                        arrayOf(category.id, category.name, category.colorHex),
+                    )
+                }
+            }
+        }
+
         @Volatile private var instance: DemoDatabase? = null
         fun open(context: Context, name: String = "allu_demo.db"): DemoDatabase {
             if (name != "allu_demo.db") {
                 return Room.databaseBuilder(context.applicationContext, DemoDatabase::class.java, name)
-                    .addMigrations(MIGRATION_1_2).build()
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3).build()
             }
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(context.applicationContext, DemoDatabase::class.java, name)
-                    .addMigrations(MIGRATION_1_2).build().also { instance = it }
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3).build().also { instance = it }
             }
         }
     }

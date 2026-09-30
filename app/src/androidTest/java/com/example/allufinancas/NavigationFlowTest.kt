@@ -16,7 +16,6 @@ import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoRepository
-import com.example.allufinancas.data.DemoSeed
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -34,12 +33,12 @@ class NavigationFlowTest {
     @Before fun resetDemoFixture() = runBlocking {
         repository = DemoRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         withTimeout(15_000) { repository.ready.first { it } }
-        repository.resetDemoData()
+        seedLocalLedger(repository, InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     @Test fun filtersSurviveTabSwitchBackStackAndActivityRecreation() {
         enterDashboard()
-        assertProvenance("Início · saldos snapshot + entradas/saídas 2026-09 + limites/metas")
+        assertProvenance("Início · período 2026-09")
         rule.onNodeWithContentDescription("Extrato").performClick()
         assertProvenance("Todos os movimentos")
         rule.onNodeWithTag("transaction-categories").performScrollToNode(hasText("Compras"))
@@ -50,7 +49,7 @@ class NavigationFlowTest {
         rule.onNodeWithText("Loja Exemplo").performScrollTo().assertExists()
 
         rule.onNodeWithContentDescription("Avisos").performClick()
-        assertProvenance("Avisos · regras locais · período do pacote ${DemoSeed.MONTH}")
+        assertProvenance("Avisos · regras locais · período ${LocalLedgerFixtures.MONTH}")
         rule.onNodeWithContentDescription("Extrato").performClick()
         assertProvenance("Período: 2026-09 · Busca: Notebook · Categoria: Compras")
         rule.onNodeWithText("Notebook").assertExists()
@@ -59,7 +58,7 @@ class NavigationFlowTest {
 
         rule.onNodeWithText("Ajustes").performClick()
         rule.onNodeWithText("Privacidade e limitações").performClick()
-        rule.onNodeWithText("não se conecta a bancos", substring = true).assertExists()
+        rule.onNodeWithText("Não há conexão com bancos", substring = true).assertExists()
         pressBack()
         rule.onNodeWithText("Preferência de exibição").assertExists()
         pressBack()
@@ -90,18 +89,18 @@ class NavigationFlowTest {
         rule.waitUntil(15_000) { rule.onAllNodesWithTag("navigation-rail").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithTag("bottom-navigation").assertDoesNotExist()
         rule.onNodeWithContentDescription("Avisos").performClick()
-        assertProvenance("Avisos · regras locais · período do pacote ${DemoSeed.MONTH}")
+        assertProvenance("Avisos · regras locais · período ${LocalLedgerFixtures.MONTH}")
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Ativos").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Ativos").assertExists()
         rule.onNodeWithContentDescription("Início").performClick()
-        assertProvenance("Início · saldos snapshot + entradas/saídas 2026-09 + limites/metas")
+        assertProvenance("Início · período 2026-09")
         rule.onNodeWithContentDescription("Planos").performClick()
-        assertProvenance("Limites e metas · Setembro/2026")
+        assertProvenance("Limites por categoria · 2026-09")
     }
 
     private fun enterDashboard() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
     }
@@ -115,15 +114,8 @@ class NavigationFlowTest {
     }
 
     private fun assertProvenance(scope: String) {
-        rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Escopo: $scope", substring = true).fetchSemanticsNodes().isNotEmpty() &&
-                rule.onAllNodesWithText("(hora local)", substring = true).fetchSemanticsNodes().isNotEmpty()
-        }
-        rule.onNodeWithText("Fonte local: exemplos fictícios", substring = true).assertExists()
-        assertTrue(
-            rule.onAllNodesWithText("Data editorial do pacote: ${DemoSeed.GENERATED_DATE}", substring = true)
-                .fetchSemanticsNodes().isNotEmpty(),
-        )
-        rule.onNodeWithText("Materializado neste aparelho:", substring = true).assertExists()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Escopo: $scope", substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
+        rule.onNodeWithText("Fonte: lançamentos cadastrados neste dispositivo", substring = true).assertExists()
     }
 }

@@ -17,6 +17,8 @@ data class HomeProjection(
 )
 
 object DemoAnalysis {
+    fun balanceCents(transactions: List<Transaction>): Long = transactions.sumOf { it.amountCents }
+
     fun monthSummary(transactions: List<Transaction>, month: String): MonthSummary {
         val selected = transactionsInMonth(transactions, month)
         val income = selected.filter { it.amountCents > 0 }.sumOf { it.amountCents }
@@ -84,7 +86,7 @@ object DemoAnalysis {
                 result += Insight(
                     id = "budget-${budget.categoryId}",
                     title = "Orçamento acima do limite",
-                    explanation = "${names[budget.categoryId] ?: "Categoria"}: ${money(spent)} em compras fictícias, " +
+                    explanation = "${names[budget.categoryId] ?: "Categoria"}: ${money(spent)} em despesas registradas, " +
                         "${money(budget.limitCents)} de limite; diferença de ${money(spent - budget.limitCents)}.",
                     severity = InsightSeverity.WARNING,
                     transactionIds = sources,
@@ -97,8 +99,8 @@ object DemoAnalysis {
                 result += Insight(
                     id = "duplicate-${group.map { it.id }.sorted().joinToString("-")}",
                     title = "Possível lançamento repetido",
-                    explanation = "${group.size} compras fictícias de ${money(-group.first().amountCents)} " +
-                        "em ${group.first().merchant} na mesma data. Confira antes de classificar: isto não é uma confirmação de cobrança dupla.",
+                    explanation = "${group.size} compras de ${money(-group.first().amountCents)} " +
+                        "em ${group.first().merchant} na mesma data. Confira os lançamentos; isto não confirma cobrança dupla.",
                     severity = InsightSeverity.WARNING,
                     transactionIds = group.map { it.id }.sorted(),
                 )
@@ -108,7 +110,7 @@ object DemoAnalysis {
             result += Insight(
                 id = "recurring-$month",
                 title = "Compromissos recorrentes",
-                explanation = "${recurring.size} despesas fictícias marcadas como recorrentes somam " +
+                explanation = "${recurring.size} despesas marcadas como recorrentes somam " +
                     "${money(recurring.sumOf { -it.amountCents })} neste mês.",
                 severity = InsightSeverity.INFO,
                 transactionIds = recurring.map { it.id },
@@ -129,9 +131,9 @@ object DemoAnalysis {
             unusual?.let {
                 result += Insight(
                     id = "unusual-${it.id}",
-                    title = "Valor acima do padrão desta amostra",
+                    title = "Valor acima do padrão deste mês",
                     explanation = "${it.merchant}: ${money(-it.amountCents)}, mais de três vezes " +
-                        "a mediana ${money(median)} das despesas fictícias deste mês. Não indica fraude.",
+                        "a mediana ${money(median)} das despesas deste mês. Não indica fraude.",
                     severity = InsightSeverity.INFO,
                     transactionIds = listOf(it.id),
                 )

@@ -80,6 +80,8 @@ private class FakeDemoDataSource : DemoDataSource {
     override val preferences = MutableStateFlow(DisplayPreferences())
     override val materializedAt = MutableStateFlow<Instant?>(null)
 
+    override suspend fun saveTransaction(transaction: Transaction) = Unit
+    override suspend fun deleteTransaction(id: String) = Unit
     override suspend fun updateBudget(categoryId: String, limitCents: Long) = Unit
     override suspend fun setTransactionCategory(transactionId: String, categoryId: String) = Unit
     override suspend fun decideReconciliationCase(caseId: String) = Unit

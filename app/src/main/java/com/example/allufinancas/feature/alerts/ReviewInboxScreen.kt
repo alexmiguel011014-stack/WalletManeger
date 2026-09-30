@@ -27,16 +27,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.allufinancas.core.brl
 import com.example.allufinancas.data.Category
-import com.example.allufinancas.data.DemoSeed
 import com.example.allufinancas.data.ReconciliationCase
 import com.example.allufinancas.data.ReviewKind
 import com.example.allufinancas.data.ReviewStrength
 import com.example.allufinancas.data.Transaction
+import com.example.allufinancas.data.TransactionCategoryRules
 import com.example.allufinancas.designsystem.DemoStrip
 import com.example.allufinancas.designsystem.EmptyState
 import com.example.allufinancas.designsystem.Panel
 import com.example.allufinancas.designsystem.AlluTokens
 import java.time.Instant
+import java.time.YearMonth
 
 @Composable
 internal fun ReviewInbox(
@@ -51,12 +52,13 @@ internal fun ReviewInbox(
     var showDecided by rememberSaveable { mutableStateOf(false) }
     val visible = cases.filter { it.decided == showDecided }
     val transactionsById = transactions.associateBy { it.id }
+    val month = YearMonth.now().toString()
     LazyColumn(
         Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item { DemoStrip("Revisão · regras locais · período do pacote ${DemoSeed.MONTH}", materializedAt) }
+        item { DemoStrip("Revisão · regras locais · período $month", materializedAt) }
         item {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(selected = !showDecided, onClick = { showDecided = false }, label = { Text("Pendentes (${cases.count { !it.decided }})") })
@@ -66,7 +68,7 @@ internal fun ReviewInbox(
         if (visible.isEmpty()) item {
             EmptyState(
                 title = if (showDecided) "Nenhuma decisão ainda" else "Tudo revisado",
-                message = if (showDecided) "As decisões que você tomar nesta demonstração aparecerão aqui e poderão ser desfeitas." else "Não há itens pendentes nesta amostra fictícia.",
+                message = if (showDecided) "As decisões que você tomar aparecerão aqui e poderão ser desfeitas." else "Não há itens pendentes nos lançamentos disponíveis.",
             )
         }
         itemsIndexed(visible, key = { _, item -> item.id }) { index, item ->
@@ -107,8 +109,12 @@ internal fun ReviewInbox(
                     } else when (item.kind) {
                         ReviewKind.UNCATEGORIZED -> {
                             Text("Escolha uma categoria para este lançamento:")
+                            val transaction = item.transactionIds.singleOrNull()?.let(transactionsById::get)
+                            val compatibleCategories = transaction?.let {
+                                TransactionCategoryRules.compatible(categories, it.amountCents)
+                            }.orEmpty()
                             Column(verticalArrangement = Arrangement.spacedBy(AlluTokens.Spacing.xs)) {
-                                categories.chunked(2).forEach { rowCategories ->
+                                compatibleCategories.chunked(2).forEach { rowCategories ->
                                     Row(horizontalArrangement = Arrangement.spacedBy(AlluTokens.Spacing.xs)) {
                                         rowCategories.forEach { category ->
                                             OutlinedButton(
@@ -131,6 +137,6 @@ internal fun ReviewInbox(
                 }
             }
         }
-        item { Text("Ajustes e decisões são locais e reversíveis. Esta amostra não altera valores nem datas.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium) }
+        item { Text("Ajustes e decisões ficam neste dispositivo e podem ser desfeitos. Eles não alteram valores nem datas.", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelMedium) }
     }
 }

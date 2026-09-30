@@ -38,22 +38,22 @@ internal fun PrivacyEducation(materializedAt: Instant?, onBack: () -> Unit) {
         Panel {
             Text("Nenhuma conexão ativa", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text("Esta demonstração não se conecta a bancos e não tem integração ativa com WhatsApp.")
+            Text("O app funciona localmente. Não há conexão com bancos, pagamentos nem integração com WhatsApp.")
         }
         Panel {
             Text("Sem coleta de dados externos", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text("Não há coleta ou envio de dados externos: não lemos contas bancárias nem mensagens do WhatsApp. Dados financeiros são fictícios e ficam neste dispositivo. O texto digitado no chat também fica neste dispositivo, mas pode não ser fictício.")
+            Text("O que você cadastrar — lançamentos, limites e mensagens do assistente — fica neste dispositivo. O app não lê contas bancárias nem mensagens de outros aplicativos e não envia esses dados para serviços externos.")
         }
         Panel {
             Text("Limitações deste MVP", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text("Exportar dados e excluir itens individualmente não estão disponíveis.")
+            Text("Lançamentos podem ser editados ou excluídos no extrato. Ainda não há exportação, recuperação de conta ou sincronização entre dispositivos.")
         }
         Panel {
             Text("Consentimento", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(6.dp))
-            Text("Uma eventual integração futura é apenas uma possibilidade conceitual, não uma promessa. Se algum dia fosse oferecida, exigiria informação clara e consentimento explícito antes de qualquer conexão.")
+            Text("Esta versão não oferece integração bancária. Qualquer conexão futura exigiria um plano separado e autorização explícita.")
         }
     }
 }

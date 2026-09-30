@@ -1,6 +1,7 @@
 package com.example.allufinancas
 
 import com.example.allufinancas.data.DemoAnalysis
+import com.example.allufinancas.data.DemoRepository
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasScrollToIndexAction
@@ -12,6 +13,10 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeout
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -21,27 +26,35 @@ class AlluSmokeTest {
     @get:Rule val rule = createAndroidComposeRule<MainActivity>()
 
     @Test fun disclosureAndMainDestinations() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repository = DemoRepository(context)
+        runBlocking { withTimeout(15_000) { repository.ready.first { it } }; repository.resetDemoData() }
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("DADOS FICTÍCIOS", substring = true).assertExists()
+        rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
+        rule.onNodeWithText("R$ 0,00").assertExists()
         rule.onNodeWithText("Extrato").performClick()
         rule.onNodeWithText("Buscar estabelecimento").assertExists()
+        rule.onNodeWithText("Comece seu extrato").assertExists()
         rule.onNodeWithText("Planos").performClick()
-        rule.onNodeWithText("Planeje sem perder a origem dos números.").assertExists()
+        rule.onNodeWithText("Adicionar limite").assertExists()
         rule.onNodeWithText("Avisos").performClick()
         rule.onNode(hasScrollToIndexAction()).performScrollToNode(
             hasText("Esses avisos não confirmam fraude nem substituem orientação profissional.", substring = true),
         )
         rule.onNodeWithText("Esses avisos não confirmam fraude nem substituem orientação profissional.", substring = true).assertExists()
         rule.onNodeWithText("Assistente").performClick()
-        rule.onNodeWithText("Pergunte sobre os exemplos").assertExists()
+        rule.onNodeWithText("Pergunte sobre seus lançamentos").assertExists()
     }
 
     @Test fun homeMonthProjectionStaysConsistentAndRestoresSelection() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repository = DemoRepository(context)
+        runBlocking { withTimeout(15_000) { repository.ready.first { it } }; seedLocalLedger(repository, context) }
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("09/2026").fetchSemanticsNodes().isNotEmpty() }
         val homeList = rule.onNode(hasScrollToIndexAction())

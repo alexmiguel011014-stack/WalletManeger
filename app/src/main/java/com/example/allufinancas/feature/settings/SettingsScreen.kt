@@ -25,7 +25,7 @@ import java.time.Instant
 @Composable internal fun Settings(settings: DisplayPreferences, materializedAt: Instant?, model: AlluViewModel, onPrivacy: () -> Unit) {
     var confirmReset by rememberSaveable { mutableStateOf(false) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { DemoStrip("Ajustes da demonstração", materializedAt) }
+        item { DemoStrip("Ajustes", materializedAt) }
         item {
             Panel {
                 Text("Preferências", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -37,26 +37,26 @@ import java.time.Instant
         }
         item {
             Panel {
-                Text("Seus dados nesta demonstração", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Seus dados locais", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 Spacer(Modifier.height(8.dp))
-                Text("Os dados financeiros de exemplo são fictícios e ficam neste dispositivo. O texto digitado no chat também fica local, mas pode não ser fictício.")
-                Text("Exportar dados e excluir itens individualmente não estão disponíveis neste MVP.")
+                Text("Lançamentos, limites e mensagens do assistente ficam salvos neste dispositivo. O app não se conecta a bancos nem envia esses dados.")
+                Text("Você pode editar ou excluir lançamentos pelo extrato. A exportação de dados ainda não está disponível.")
                 TextButton(onClick = onPrivacy) { Text("Privacidade e limitações") }
             }
         }
         item {
             Panel {
-                Text("Restaurar dados locais da demonstração", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text("Recria o pacote fictício e remove alterações locais da demonstração e mensagens digitadas. Preferências de exibição e a escolha de entrada inicial permanecem.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                TextButton(onClick = { confirmReset = true }) { Text("Restaurar demonstração") }
+                Text("Excluir seus dados locais", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Text("Apaga lançamentos, limites, metas, avisos, decisões e mensagens do assistente. As categorias padrão e suas preferências ficam.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                TextButton(onClick = { confirmReset = true }) { Text("Excluir todos os dados") }
             }
         }
     }
     ConfirmationSheet(
         visible = confirmReset,
-        title = "Restaurar demonstração?",
-        message = "Esta ação remove alterações locais da demonstração e mensagens digitadas, e recria o pacote fictício. Não afeta bancos, WhatsApp nem outros apps. Preferências de exibição e a escolha de entrada inicial serão preservadas.",
-        confirmLabel = "Restaurar",
+        title = "Excluir todos os dados locais?",
+        message = "Esta ação apaga seus lançamentos, limites, metas, avisos, decisões e mensagens do assistente. As categorias padrão, preferências de exibição e escolha de entrada inicial serão preservadas.",
+        confirmLabel = "Excluir dados",
         onConfirm = model::resetDemo,
         onDismiss = { confirmReset = false },
     )

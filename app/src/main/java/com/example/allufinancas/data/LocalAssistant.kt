@@ -2,21 +2,22 @@ package com.example.allufinancas.data
 
 import java.text.Normalizer
 import java.util.Locale
+import java.time.YearMonth
 
-/** Answers only the six documented intents from on-device fictional data. */
+/** Answers supported finance questions using only the local user ledger. */
 object LocalAssistant {
     fun answer(
         question: String,
         transactions: List<Transaction>,
         categories: List<Category>,
         budgets: List<Budget>,
-        month: String = DemoSeed.MONTH,
+        month: String = YearMonth.now().toString(),
     ): AssistantAnswer {
         val intent = normalize(question)
         val realtimeRequest = listOf("hoje", "agora", "tempo real", "atualizado", "sincronizado", "saldo atual")
             .any { it in intent }
         if (realtimeRequest) {
-            return AssistantAnswer("Não consigo consultar dados em tempo real. Esta demonstração usa apenas o pacote fictício local.")
+            return AssistantAnswer("Não consigo consultar dados em tempo real. Este app usa apenas os lançamentos salvos neste dispositivo.")
         }
         val namedMonth = listOf(
             "janeiro" to "01", "fevereiro" to "02", "marco" to "03", "abril" to "04",
@@ -31,16 +32,16 @@ object LocalAssistant {
                 "${match.groupValues[1]}-${match.groupValues[2]}" != month.take(7)
             } == true || (mentionedYear != null && explicitYearMonth == null && namedMonth == null)
         if (requestedDifferentMonth) {
-            return AssistantAnswer("Só tenho dados fictícios de setembro de 2026 neste pacote. Não consigo responder sobre outro período.")
+            return AssistantAnswer("Não encontrei dados cadastrados para esse período. Consulte um mês com lançamentos salvos neste dispositivo.")
         }
         val selected = transactions.filter { it.date.startsWith(month) }
         val expenses = selected.filter { it.amountCents < 0 }
         val category = categories.firstOrNull { normalize(it.name) in intent }
-        val source = "Cálculo local com lançamentos fictícios de $month."
+        val source = "Cálculo local com seus lançamentos de $month."
 
         if (listOf("demo", "ficticio", "real", "banco", "fonte", "dados").any { it in intent }) {
-            return AssistantAnswer("Todos os valores aqui são exemplos fictícios armazenados neste aparelho. " +
-                "Não há conta bancária conectada, sincronização ou aconselhamento financeiro.")
+            return AssistantAnswer("As respostas usam seus lançamentos, categorias e limites salvos neste aparelho. " +
+                "Não há conexão bancária, sincronização nem aconselhamento financeiro.")
         }
 
         if ("orcamento" in intent || "limite" in intent || "disponivel" in intent) {
@@ -60,7 +61,7 @@ object LocalAssistant {
 
         if ("maior" in intent && ("gasto" in intent || "despesa" in intent || "compra" in intent)) {
             val largest = expenses.minByOrNull { it.amountCents }
-                ?: return AssistantAnswer("Não há despesas fictícias neste período. $source")
+                ?: return AssistantAnswer("Não há despesas cadastradas neste período. $source")
             return AssistantAnswer(
                 "A maior despesa foi ${largest.merchant}: ${DemoAnalysis.money(-largest.amountCents)} " +
                     "em ${largest.date}. $source",
@@ -70,7 +71,7 @@ object LocalAssistant {
 
         if (listOf("recorrente", "assinatura", "mensalidade").any { it in intent }) {
             val recurring = expenses.filter { it.recurring }
-            if (recurring.isEmpty()) return AssistantAnswer("Não há despesas recorrentes fictícias neste período. $source")
+            if (recurring.isEmpty()) return AssistantAnswer("Não há despesas recorrentes cadastradas neste período. $source")
             return AssistantAnswer(
                 "${recurring.size} despesas recorrentes somam " +
                     "${DemoAnalysis.money(recurring.sumOf { -it.amountCents })}: " +
@@ -81,14 +82,20 @@ object LocalAssistant {
 
         if (category != null && listOf("gasto", "gastei", "despesa", "total", "quanto").any { it in intent }) {
             val related = expenses.filter { it.categoryId == category.id }
+            if (selected.isEmpty()) {
+                return AssistantAnswer("Ainda não há lançamentos de ${category.name} em $month. Cadastre uma entrada ou saída no extrato para começar.")
+            }
             return AssistantAnswer(
                 "${category.name}: ${DemoAnalysis.money(related.sumOf { -it.amountCents })} em " +
-                    "${related.size} lançamentos fictícios. $source",
+                    "${related.size} lançamentos. $source",
                 related.map { it.id },
             )
         }
 
         if (listOf("gastei", "gasto", "despesa", "total do mes", "total mensal").any { it in intent }) {
+            if (selected.isEmpty()) {
+                return AssistantAnswer("Ainda não há lançamentos em $month. Cadastre uma entrada ou saída no extrato para começar.")
+            }
             val total = DemoAnalysis.monthSummary(selected, month).expenseCents
             return AssistantAnswer(
                 "As despesas do mês somam ${DemoAnalysis.money(total)} em ${expenses.size} lançamentos. $source",
@@ -97,7 +104,7 @@ object LocalAssistant {
         }
 
         return AssistantAnswer("Só consigo calcular total do mês, total por categoria, maior despesa, " +
-            "cobranças recorrentes e orçamento disponível usando esta demonstração local. " +
+            "lançamentos recorrentes e orçamento disponível usando dados salvos neste dispositivo. " +
             "Experimente: quanto gastei neste mês?")
     }
 

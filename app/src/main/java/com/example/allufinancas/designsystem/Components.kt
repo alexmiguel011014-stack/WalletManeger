@@ -36,7 +36,6 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.example.allufinancas.core.brl
 import com.example.allufinancas.data.Category
-import com.example.allufinancas.data.DemoSeed
 import com.example.allufinancas.data.Transaction
 import java.time.Instant
 import java.time.ZoneId
@@ -46,20 +45,13 @@ import java.util.Locale
 @Composable internal fun DemoStrip(
     scope: String,
     materializedAt: Instant?,
-    lastSyncAt: Instant? = null,
-    coverageNote: String? = null,
 ) {
     val localTimestamp = materializedAt?.atZone(ZoneId.systemDefault())
         ?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR")))
         ?.plus(" (hora local)") ?: "indisponível"
-    val syncLabel = lastSyncAt?.atZone(ZoneId.systemDefault())
-        ?.format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm", Locale.forLanguageTag("pt-BR")))
-        ?.let { " · Última sincronização: $it (hora local)" }.orEmpty()
-    val coverageLabel = coverageNote?.takeIf { it.isNotBlank() }?.let { " · Cobertura: $it" }.orEmpty()
     Surface(color = AlluTint, shape = RoundedCornerShape(AlluTokens.Radius.chip), modifier = Modifier.fillMaxWidth()) {
         Text(
-            "DADOS FICTÍCIOS · Fonte local: exemplos fictícios · Data editorial do pacote: ${DemoSeed.GENERATED_DATE} · " +
-                "Materializado neste aparelho: $localTimestamp · Escopo: $scope$syncLabel$coverageLabel",
+            "DADOS LOCAIS · Fonte: lançamentos cadastrados neste dispositivo · Atualizado: $localTimestamp · Escopo: $scope",
             Modifier.padding(AlluTokens.Spacing.xs), color = AlluNavy, style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
         )

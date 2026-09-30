@@ -56,7 +56,7 @@ class AlluViewModelActionsTest {
                     ),
                     source.actions,
                 )
-                assertEquals("Dados fictícios restaurados", viewModel.notice.value)
+                assertEquals("Dados financeiros locais excluídos", viewModel.notice.value)
                 viewModel.clearNotice()
                 assertNull(viewModel.notice.value)
             }
@@ -77,7 +77,7 @@ class AlluViewModelActionsTest {
                 runCurrent()
 
                 assertEquals(listOf("reset"), source.actions)
-                assertEquals("Não foi possível restaurar os dados", viewModel.notice.value)
+                assertEquals("Não foi possível excluir os dados", viewModel.notice.value)
             }
         } finally {
             Dispatchers.resetMain()
@@ -100,6 +100,8 @@ private class RecordingDemoDataSource(private val failOn: String? = null) : Demo
     override val preferences: Flow<DisplayPreferences> = MutableStateFlow(DisplayPreferences())
     override val materializedAt: Flow<Instant?> = MutableStateFlow(null)
 
+    override suspend fun saveTransaction(transaction: Transaction) = record("save:${transaction.id}")
+    override suspend fun deleteTransaction(id: String) = record("delete:$id")
     override suspend fun updateBudget(categoryId: String, limitCents: Long) = record("budget:$categoryId:$limitCents")
     override suspend fun setTransactionCategory(transactionId: String, categoryId: String) = record("category:$transactionId:$categoryId")
     override suspend fun decideReconciliationCase(caseId: String) = record("decide:$caseId")

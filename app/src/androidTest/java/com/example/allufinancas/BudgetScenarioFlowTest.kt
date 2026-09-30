@@ -30,7 +30,7 @@ class BudgetScenarioFlowTest {
     @Before fun resetDemoState() = runBlocking {
         repository = DemoRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         withTimeout(15_000) { repository.ready.first { it } }
-        repository.resetDemoData()
+        seedLocalLedger(repository, InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     @After fun restoreDemoState() = runBlocking { repository.resetDemoData() }
@@ -50,7 +50,7 @@ class BudgetScenarioFlowTest {
             rule.onAllNodesWithText(expectedBalance, substring = true).fetchSemanticsNodes().isNotEmpty()
         }
         rule.onNodeWithText("Simulação — não altera seu limite").assertExists()
-        rule.onNodeWithText("gasto registrado em set/2026", substring = true).assertExists()
+        rule.onNodeWithText("gasto registrado em 2026-09", substring = true).assertExists()
         rule.onNodeWithText("Diferença ante limite atual: ${brl(50_000)} a mais (Alimentação).", substring = true).assertExists()
         assertEquals(savedLimit, persistedFoodLimit())
 
@@ -68,8 +68,8 @@ class BudgetScenarioFlowTest {
     }
 
     private fun enterDemo() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
     }

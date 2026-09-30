@@ -12,7 +12,6 @@ import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoRepository
-import com.example.allufinancas.data.DemoSeed
 import com.example.allufinancas.data.InsightSeverity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -33,7 +32,7 @@ class AlertsFlowTest {
     @Before fun resetDemoState() = runBlocking {
         repository = DemoRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         withTimeout(15_000) { repository.ready.first { it } }
-        restoreDemoState()
+        seedLocalLedger(repository, InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     @After fun restoreDemoStateAfterTest() = runBlocking { restoreDemoState() }
@@ -43,7 +42,7 @@ class AlertsFlowTest {
         val evidence = listOf(
             Triple("budget-alimentacao", InsightSeverity.WARNING, "t10, t03, t02"),
             Triple("duplicate-t04-t05", InsightSeverity.WARNING, "t04, t05"),
-            Triple("recurring-2026-09", InsightSeverity.INFO, "t11, t09, t06"),
+            Triple("recurring-${LocalLedgerFixtures.MONTH}", InsightSeverity.INFO, "t11, t09, t06"),
             Triple("unusual-t02", InsightSeverity.INFO, "t02"),
         )
         scrollAlertsTo("budget-alimentacao")
@@ -54,7 +53,7 @@ class AlertsFlowTest {
             assertTrue(rule.onAllNodesWithText("Severidade: ${severity.name}", substring = true).fetchSemanticsNodes().isNotEmpty())
             rule.onNodeWithText(id, substring = true).assertExists()
             rule.onNodeWithText("Lançamentos-base: $sources", substring = true).assertExists()
-            assertTrue(rule.onAllNodesWithText("Data editorial do pacote: ${DemoSeed.GENERATED_DATE}", substring = true)
+            assertTrue(rule.onAllNodesWithText("Gerado localmente em", substring = true)
                 .fetchSemanticsNodes().isNotEmpty())
         }
 
@@ -82,7 +81,7 @@ class AlertsFlowTest {
         repeat(4) { archiveNext() }
         rule.onNodeWithText("Sem avisos ativos", useUnmergedTree = true).performScrollTo().assertExists()
         rule.onNodeWithText(
-            "Todos os avisos gerados para este pacote foram arquivados",
+            "Todos os avisos atuais foram arquivados",
             substring = true,
             useUnmergedTree = true,
         ).assertExists()
@@ -90,18 +89,17 @@ class AlertsFlowTest {
     }
 
     private fun enterAlerts() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("Avisos").performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Data editorial do pacote: ${DemoSeed.GENERATED_DATE}", substring = true)
+            rule.onAllNodesWithText("Gerado localmente em", substring = true)
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Fonte local: exemplos fictícios", substring = true).assertExists()
-        rule.onNodeWithText("Materializado neste aparelho:", substring = true).assertExists()
-        rule.onNodeWithText("Escopo: Avisos · regras locais · período do pacote ${DemoSeed.MONTH}", substring = true).assertExists()
+        rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
+        rule.onNodeWithText("Escopo: Avisos · regras locais · período ${LocalLedgerFixtures.MONTH}", substring = true).assertExists()
     }
 
     private fun archiveNext() {

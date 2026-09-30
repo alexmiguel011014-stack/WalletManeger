@@ -33,14 +33,14 @@ import com.example.allufinancas.navigation.*
         Column {
             Surface(color = Color.White.copy(alpha = .1f), shape = RoundedCornerShape(14.dp)) {
                 Column(Modifier.padding(18.dp)) {
-                    Text("AMBIENTE DE DEMONSTRAÇÃO", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("SEUS DADOS FICAM NO APARELHO", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(8.dp))
-                    Text("Explore saldos e gastos fictícios. Sem cadastro, bancos ou envio de dados.", color = Color.White)
+                    Text("Cadastre suas entradas, saídas e limites. Sem conta, conexão bancária ou envio de dados.", color = Color.White)
                 }
             }
             Spacer(Modifier.height(20.dp))
-            Button(onClick = onExplore, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Explorar demonstração") }
-            TextButton(onClick = onPrivacy, modifier = Modifier.fillMaxWidth()) { Text("Privacidade e dados de exemplo", color = Color.White) }
+            Button(onClick = onExplore, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Começar a cadastrar") }
+            TextButton(onClick = onPrivacy, modifier = Modifier.fillMaxWidth()) { Text("Privacidade e dados locais", color = Color.White) }
         }
     }
     }

@@ -14,8 +14,10 @@ import kotlinx.coroutines.launch
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDateTime
+import java.time.LocalDate
+import java.time.YearMonth
 
-/** The app's only financial source: bundled examples in a local Room database. */
+/** The app's only financial source: user-entered data in a local Room database. */
 class DemoRepository(context: Context, private val clock: Clock = Clock.systemUTC()) : DemoDataSource {
     private val database = DemoDatabase.open(context)
     private val dao = database.dao()
@@ -46,35 +48,93 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
     init {
         scope.launch {
             try {
-                if (dao.accountCount() == 0) settings.clearMaterializedAt()
-                val seeded = database.withTransaction {
-                    if (dao.accountCount() == 0) {
-                        seedLocked()
+                val initialized = database.withTransaction {
+                    if (dao.categoryCount() == 0) {
+                        putDefaultCategoriesLocked()
                         true
                     } else false
                 }
-                if (seeded) recordMaterializedAt()
+                if (initialized) recordMaterializedAt()
                 _ready.value = true
             } catch (exception: Exception) {
-                _error.value = exception.message ?: "Falha ao abrir os dados da demonstração"
+                _error.value = exception.message ?: "Falha ao abrir os dados locais"
             }
         }
     }
 
+    override suspend fun saveTransaction(transaction: Transaction) {
+        val merchant = transaction.merchant.trim()
+        val description = transaction.description.trim()
+        require(transaction.id.isNotBlank()) { "Identificador inválido" }
+        require(transaction.amountCents != 0L && transaction.amountCents in -MAX_AMOUNT_CENTS..MAX_AMOUNT_CENTS) {
+            "Informe um valor diferente de zero dentro do limite permitido"
+        }
+        require(merchant.isNotEmpty() && merchant.length <= MAX_MERCHANT_LENGTH) {
+            "Informe um estabelecimento com até $MAX_MERCHANT_LENGTH caracteres"
+        }
+        require(description.length <= MAX_DESCRIPTION_LENGTH) { "A descrição deve ter até $MAX_DESCRIPTION_LENGTH caracteres" }
+        val installmentNumber = transaction.installmentNumber
+        val installmentCount = transaction.installmentCount
+        require((installmentNumber == null && installmentCount == null) ||
+            (installmentNumber != null && installmentCount != null && installmentCount in 1..MAX_INSTALLMENTS && installmentNumber in 1..installmentCount)) {
+            "Informe a parcela atual e o total: 1 ≤ atual ≤ total ≤ $MAX_INSTALLMENTS"
+        }
+        require(!transaction.recurring || transaction.amountCents < 0) { "Marque recorrência apenas em uma despesa" }
+        require(runCatching { LocalDate.parse(transaction.date).toString() == transaction.date }.getOrDefault(false)) {
+            "Informe uma data válida no formato AAAA-MM-DD"
+        }
+        database.withTransaction {
+            require(dao.allCategories().any { it.id == transaction.categoryId }) { "Categoria desconhecida" }
+            require(TransactionCategoryRules.isCompatible(transaction.categoryId, transaction.amountCents)) {
+                "A categoria precisa corresponder a uma entrada ou saída"
+            }
+            val cleaned = transaction.copy(
+                accountId = MANUAL_ACCOUNT_ID,
+                merchant = merchant,
+                description = description,
+                sourceCategoryId = transaction.categoryId,
+                recurring = transaction.recurring,
+                installmentNumber = installmentNumber,
+                installmentCount = installmentCount,
+            )
+            dao.putTransactions(listOf(cleaned.toRow()))
+            dao.deleteReconciliationDecision("uncategorized-${transaction.id}")
+            dao.deleteReconciliationDecision("category-${transaction.id}")
+            dao.clearRuleDecisions()
+            refreshAlertsLocked()
+        }
+        recordMaterializedAt()
+    }
+
+    override suspend fun deleteTransaction(id: String) {
+        database.withTransaction {
+            require(dao.deleteTransaction(id) == 1) { "Lançamento desconhecido" }
+            dao.deleteReconciliationDecision("uncategorized-$id")
+            dao.deleteReconciliationDecision("category-$id")
+            dao.clearRuleDecisions()
+            refreshAlertsLocked()
+        }
+        recordMaterializedAt()
+    }
+
     override suspend fun updateBudget(categoryId: String, limitCents: Long) {
-        require(limitCents >= 0) { "O limite não pode ser negativo" }
+        require(limitCents in 1..MAX_AMOUNT_CENTS) { "Informe um limite positivo válido" }
         database.withTransaction {
             require(dao.allCategories().any { it.id == categoryId }) { "Categoria desconhecida" }
             dao.putBudgets(listOf(BudgetRow(categoryId, limitCents)))
             refreshAlertsLocked()
         }
+        recordMaterializedAt()
     }
 
     override suspend fun setTransactionCategory(transactionId: String, categoryId: String) {
         database.withTransaction {
-            require(dao.allCategories().any { it.id == categoryId }) { "Categoria desconhecida" }
             val transaction = dao.allTransactions().firstOrNull { it.id == transactionId }
                 ?: error("Lançamento desconhecido")
+            require(dao.allCategories().any { it.id == categoryId }) { "Categoria desconhecida" }
+            require(TransactionCategoryRules.isCompatible(categoryId, transaction.amountCents)) {
+                "A categoria precisa corresponder a uma entrada ou saída"
+            }
             val caseId = if (transaction.categoryId.isBlank()) "uncategorized-$transactionId" else "category-$transactionId"
             val kind = if (transaction.categoryId.isBlank()) ReviewKind.UNCATEGORIZED.name else "CATEGORY_OVERRIDE"
             dao.putReconciliationDecision(
@@ -82,6 +142,7 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
             )
             refreshAlertsLocked()
         }
+        recordMaterializedAt()
     }
 
     override suspend fun decideReconciliationCase(caseId: String) {
@@ -94,6 +155,7 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
                 ReconciliationDecisionRow(knownCase.id, knownCase.kind.name, knownCase.transactionIds, null),
             )
         }
+        recordMaterializedAt()
     }
 
     override suspend fun reopenReconciliationCase(caseId: String) {
@@ -101,17 +163,19 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
             require(dao.deleteReconciliationDecision(caseId) == 1) { "Decisão desconhecida" }
             refreshAlertsLocked()
         }
+        recordMaterializedAt()
     }
 
     override suspend fun setAlertDismissed(alertId: String, dismissed: Boolean) {
         require(dao.setAlertDismissed(alertId, dismissed) == 1) { "Alerta desconhecido" }
+        recordMaterializedAt()
     }
 
     override suspend fun sendMessage(text: String): AssistantAnswer {
         val prompt = text.trim()
         require(prompt.isNotEmpty()) { "Digite uma pergunta" }
         require(prompt.length <= 500) { "Pergunta muito longa" }
-        return database.withTransaction {
+        val answer = database.withTransaction {
             val answer = LocalAssistant.answer(
                 prompt,
                 effectiveTransactionsLocked(),
@@ -123,10 +187,11 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
             dao.putMessage(MessageRow(role = MessageRole.ASSISTANT.name, text = answer.text, createdAt = now, citationTransactionIds = answer.citationTransactionIds))
             answer
         }
+        recordMaterializedAt()
+        return answer
     }
 
     override suspend fun resetDemoData() {
-        settings.clearMaterializedAt()
         database.withTransaction {
             dao.clearMessages()
             dao.clearAlerts()
@@ -136,7 +201,7 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
             dao.clearCategories()
             dao.clearGoals()
             dao.clearAccounts()
-            seedLocked()
+            putDefaultCategoriesLocked()
         }
         recordMaterializedAt()
     }
@@ -155,13 +220,8 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
     override suspend fun setReduceMotion(enabled: Boolean) = settings.setReduceMotion(enabled)
     override suspend fun setShowCents(enabled: Boolean) = settings.setShowCents(enabled)
 
-    private suspend fun seedLocked() {
-        dao.putAccounts(DemoSeed.accounts.map { AccountRow(it.id, it.name, it.kind, it.balanceCents) })
-        dao.putCategories(DemoSeed.categories.map { CategoryRow(it.id, it.name, it.colorHex) })
-        dao.putTransactions(DemoSeed.transactions.map { it.toRow() })
-        dao.putBudgets(DemoSeed.budgets.map { BudgetRow(it.categoryId, it.limitCents) })
-        dao.putGoals(DemoSeed.goals.map { GoalRow(it.id, it.name, it.targetCents, it.savedCents) })
-        refreshAlertsLocked()
+    private suspend fun putDefaultCategoriesLocked() {
+        dao.putCategories(DefaultCategories.all.map { CategoryRow(it.id, it.name, it.colorHex) })
     }
 
     private suspend fun refreshAlertsLocked() {
@@ -170,12 +230,12 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
             effectiveTransactionsLocked(),
             dao.allCategories().map { it.toModel() },
             dao.allBudgets().map { it.toModel() },
-            DemoSeed.MONTH,
+            YearMonth.now(clock).toString(),
         )
         dao.clearAlerts()
         dao.putAlerts(calculated.map {
             AlertRow(it.id, it.title, it.explanation, it.severity.name, it.transactionIds,
-                DemoSeed.GENERATED_DATE, dismissed[it.id] ?: false)
+                LocalDate.now(clock).toString(), dismissed[it.id] ?: false)
         })
     }
 
@@ -184,6 +244,12 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
         dao.allReconciliationDecisions(),
     )
 }
+
+private const val MANUAL_ACCOUNT_ID = "manual-ledger"
+private const val MAX_AMOUNT_CENTS = 1_000_000_000_000L
+private const val MAX_INSTALLMENTS = 120
+private const val MAX_MERCHANT_LENGTH = 120
+private const val MAX_DESCRIPTION_LENGTH = 300
 
 private fun AccountRow.toModel() = AccountSummary(id, name, kind, balanceCents)
 private fun TransactionRow.toModel() = Transaction(id, accountId, merchant, description, amountCents,

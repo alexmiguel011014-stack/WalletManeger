@@ -19,17 +19,19 @@ import com.example.allufinancas.data.*
 import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.navigation.*
 import java.time.Instant
+import java.time.YearMonth
 
 @Composable internal fun Alerts(alerts: List<Alert>, materializedAt: Instant?, onDismiss: (String, Boolean) -> Unit, onOpenReview: () -> Unit) {
     var showDismissed by rememberSaveable { mutableStateOf(false) }
+    val month = YearMonth.now().toString()
     val visible = alerts.filter { it.dismissed == showDismissed }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        item { DemoStrip("Avisos · regras locais · período do pacote ${DemoSeed.MONTH}", materializedAt) }
+        item { DemoStrip("Avisos · regras locais · período $month", materializedAt) }
         item {
             Panel {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("Caixa de revisão", fontWeight = FontWeight.Bold)
-                    Text("Confira categorias ausentes, possíveis repetições e valores fora do padrão da amostra.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text("Confira categorias ausentes, possíveis repetições e valores acima do padrão dos seus lançamentos.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     TextButton(onClick = onOpenReview) { Text("Revisar lançamentos") }
                 }
             }
@@ -48,9 +50,9 @@ import java.time.Instant
                     else -> "Sem avisos ativos"
                 },
                 message = when {
-                    showDismissed -> "Ainda não há avisos arquivados neste pacote ficcional."
-                    alerts.isEmpty() -> "Nenhuma regra gerou avisos para este pacote de exemplo; isso não garante ausência de risco."
-                    else -> "Todos os avisos gerados para este pacote foram arquivados. Isso não é uma avaliação de risco zero."
+                    showDismissed -> "Os avisos arquivados por você aparecerão aqui."
+                    alerts.isEmpty() -> "Cadastre lançamentos para que as regras locais possam procurar padrões. A ausência de avisos não garante ausência de risco."
+                    else -> "Todos os avisos atuais foram arquivados. A ausência de avisos ativos não é uma avaliação de risco zero."
                 },
             )
         }
@@ -65,7 +67,7 @@ import java.time.Instant
                 append("\nRegra: ${alert.title} · ${alert.id}")
                 append("\nLançamentos-base: ")
                 append(alert.transactionIds.takeIf { it.isNotEmpty() }?.joinToString() ?: "nenhum associado")
-                append("\nData editorial do pacote: ${alert.generatedDate} · sem sincronização ou atualização em tempo real.")
+                append("\nGerado localmente em ${alert.generatedDate} · sem sincronização ou atualização em tempo real.")
                 append("\n\n${alert.explanation}")
             }
             AlluContentEntrance(visible = true, delayMillis = index * 40) {

@@ -52,7 +52,7 @@ internal data class InstallmentSignal(
     val remaining: Int,
 )
 
-/** Derives only facts represented by the selected month's demo rows and configured limits. */
+/** Derives only facts represented by the selected month's local rows and configured limits. */
 internal fun financialHealthSummary(
     transactions: List<Transaction>,
     categories: List<Category>,
@@ -100,7 +100,7 @@ internal fun FinancialHealthSummarySection(
         val noRecords = summary.periodTransactionCount == 0
         EmptyState(
             if (noRecords) "Sem registros para este período" else "Nenhum registro corresponde às regras",
-            if (noRecords) "Não há lançamentos na amostra local deste mês."
+            if (noRecords) "Não há lançamentos cadastrados neste mês."
             else "Há lançamentos neste período, mas nenhum corresponde às regras exibidas.",
         )
         return
@@ -147,7 +147,7 @@ internal fun FinancialHealthSummarySection(
 @Composable
 private fun EvidenceScope(month: String) {
     Text(
-        "Período: ${month.ifBlank { "indisponível" }} · fonte: amostra fictícia local",
+        "Período: ${month.ifBlank { "indisponível" }} · fonte: lançamentos locais cadastrados",
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         style = MaterialTheme.typography.labelSmall,
     )

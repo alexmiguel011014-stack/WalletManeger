@@ -19,6 +19,8 @@ interface DemoDataSource {
     val preferences: Flow<DisplayPreferences>
     val materializedAt: Flow<Instant?>
 
+    suspend fun saveTransaction(transaction: Transaction)
+    suspend fun deleteTransaction(id: String)
     suspend fun updateBudget(categoryId: String, limitCents: Long)
     suspend fun setTransactionCategory(transactionId: String, categoryId: String)
     suspend fun decideReconciliationCase(caseId: String)

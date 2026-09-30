@@ -180,7 +180,7 @@ private fun AlluNavigation(
                             val screen by screenModel.state.collectAsStateWithLifecycle()
                             ScreenContent(screen) { data ->
                                 Home(
-                                    data.accounts, data.transactions, data.categories, data.budgets, data.alerts,
+                                    data.transactions, data.categories, data.budgets, data.alerts,
                                     data.goals, data.preferences, materializedAt, ::selectTab,
                                     onOpenTransaction = { id ->
                                         selectTab(Page.TRANSACTIONS)
@@ -193,7 +193,7 @@ private fun AlluNavigation(
                             val screenModel: TransactionsViewModel = viewModel(factory = factory)
                             val screen by screenModel.state.collectAsStateWithLifecycle()
                             ScreenContent(screen) { data ->
-                                Transactions(data.transactions, data.categories, data.preferences, materializedAt, stateModel::setCategory) { id ->
+                                Transactions(data.transactions, data.categories, data.preferences, materializedAt, stateModel::saveTransaction) { id ->
                                     navController.navigate(transactionDetailRoute(id))
                                 }
                             }
@@ -202,7 +202,7 @@ private fun AlluNavigation(
                             val screenModel: BudgetsViewModel = viewModel(factory = factory)
                             val screen by screenModel.state.collectAsStateWithLifecycle()
                             ScreenContent(screen) { data ->
-                                Budgets(data.transactions, data.categories, data.budgets, data.goals, data.preferences, materializedAt, stateModel::updateBudget, stateModel::resetDemo)
+                                Budgets(data.transactions, data.categories, data.budgets, data.goals, data.preferences, materializedAt, stateModel::updateBudget)
                             }
                         }
                         composable(Page.ALERTS.route) {
@@ -250,6 +250,8 @@ private fun AlluNavigation(
                                         stateModel.setCategory(transactionId, categoryId)
                                         navController.popBackStack()
                                     },
+                                    onSave = stateModel::saveTransaction,
+                                    onDelete = stateModel::deleteTransaction,
                                     materializedAt = materializedAt,
                                 )
                             }

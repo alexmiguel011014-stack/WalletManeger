@@ -28,8 +28,20 @@ class AlluViewModel(internal val dataSource: DemoDataSource) : ViewModel() {
 
     fun updateBudget(categoryId: String, limitCents: Long) = viewModelScope.launch {
         runCatching { dataSource.updateBudget(categoryId, limitCents) }
-            .onSuccess { _notice.value = "Limite demonstrativo atualizado" }
+            .onSuccess { _notice.value = "Limite salvo" }
             .onFailure { _notice.value = "Não foi possível salvar o limite" }
+    }
+
+    fun saveTransaction(transaction: com.example.allufinancas.data.Transaction) = viewModelScope.launch {
+        runCatching { dataSource.saveTransaction(transaction) }
+            .onSuccess { _notice.value = "Lançamento salvo neste dispositivo" }
+            .onFailure { _notice.value = it.message ?: "Não foi possível salvar o lançamento" }
+    }
+
+    fun deleteTransaction(id: String) = viewModelScope.launch {
+        runCatching { dataSource.deleteTransaction(id) }
+            .onSuccess { _notice.value = "Lançamento excluído" }
+            .onFailure { _notice.value = it.message ?: "Não foi possível excluir o lançamento" }
     }
 
     fun setCategory(transactionId: String, categoryId: String) = viewModelScope.launch {
@@ -62,8 +74,8 @@ class AlluViewModel(internal val dataSource: DemoDataSource) : ViewModel() {
 
     fun resetDemo() = viewModelScope.launch {
         runCatching { dataSource.resetDemoData() }
-            .onSuccess { _notice.value = "Dados fictícios restaurados" }
-            .onFailure { _notice.value = "Não foi possível restaurar os dados" }
+            .onSuccess { _notice.value = "Dados financeiros locais excluídos" }
+            .onFailure { _notice.value = "Não foi possível excluir os dados" }
     }
 
     fun setDarkTheme(value: Boolean) = viewModelScope.launch { dataSource.setDarkTheme(value) }

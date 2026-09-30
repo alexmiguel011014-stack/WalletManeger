@@ -36,12 +36,12 @@ class BudgetFlowTest {
     @Before fun resetDemoState() = runBlocking {
         repository = DemoRepository(InstrumentationRegistry.getInstrumentation().targetContext)
         withTimeout(15_000) { repository.ready.first { it } }
-        restoreDemoState()
+        seedLocalLedger(repository, InstrumentationRegistry.getInstrumentation().targetContext)
     }
 
     @After fun restoreDemoStateAfterTest() = runBlocking { restoreDemoState() }
 
-    @Test fun budgetEditUpdatesHomeAndAssistantAndRestoreCanCancelOrConfirm() {
+    @Test fun budgetEditUpdatesHomeAndAssistantAndLocalDataDeletionCanCancelOrConfirm() {
         enterDemo()
         rule.onNodeWithText("Planos").performClick()
         rule.onAllNodesWithText("Alterar limite")[0].performScrollTo().performClick()
@@ -73,30 +73,33 @@ class BudgetFlowTest {
         openRestoreConfirmation()
         rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
         rule.waitUntil(10_000) {
-            rule.onAllNodesWithText("Restaurar tudo", useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
+            rule.onAllNodesWithText("Excluir dados", useUnmergedTree = true).fetchSemanticsNodes().isEmpty()
         }
+        rule.onNodeWithText("Planos").performClick()
         val updatedPlanBudget = "${DemoAnalysis.money(65_542)} usados de ${DemoAnalysis.money(100_000)}"
         scrollPlansTo(updatedPlanBudget)
         rule.waitUntil(10_000) { rule.onAllNodesWithText("1.000,00", substring = true).fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText(updatedPlanBudget, substring = true).assertExists()
 
         openRestoreConfirmation()
-        rule.onNodeWithText("Restaurar tudo", useUnmergedTree = true).performClick()
-        val restoredBudget = "${DemoAnalysis.money(65_542)} usados de ${DemoAnalysis.money(50_000)}"
-        scrollPlansTo(restoredBudget)
-        rule.waitUntil(15_000) { rule.onAllNodesWithText(restoredBudget, substring = true).fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Excluir dados", useUnmergedTree = true).performClick()
+        runBlocking {
+            withTimeout(10_000) { repository.transactions.first { it.isEmpty() } }
+            withTimeout(10_000) { repository.budgets.first { it.isEmpty() } }
+        }
     }
 
     private fun enterDemo() {
-        if (rule.onAllNodesWithText("Explorar demonstração").fetchSemanticsNodes().isNotEmpty()) {
-            rule.onNodeWithText("Explorar demonstração").performClick()
+        if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
+            rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
     }
 
     private fun openRestoreConfirmation() {
-        scrollPlansTo("Restaurar dados fictícios")
-        rule.onNodeWithText("Restaurar dados fictícios").assertIsDisplayed()
+        rule.onNodeWithText("Ajustes").performClick()
+        rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Excluir todos os dados", substring = true))
+        rule.onNodeWithText("Excluir todos os dados").assertIsDisplayed()
             .performSemanticsAction(SemanticsActions.OnClick) { it() }
     }
 
