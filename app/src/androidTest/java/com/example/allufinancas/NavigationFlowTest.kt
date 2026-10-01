@@ -58,7 +58,7 @@ class NavigationFlowTest {
 
         rule.onNodeWithText("Ajustes").performClick()
         rule.onNodeWithText("Privacidade e limitações").performClick()
-        rule.onNodeWithText("Não há conexão com bancos", substring = true).assertExists()
+        rule.onNodeWithText("não usa API bancária", substring = true).assertExists()
         pressBack()
         rule.onNodeWithText("Preferência de exibição").assertExists()
         pressBack()
@@ -116,6 +116,6 @@ class NavigationFlowTest {
     private fun assertProvenance(scope: String) {
         rule.waitUntil(10_000) { rule.onAllNodesWithText("Escopo: $scope", substring = true).fetchSemanticsNodes().isNotEmpty() }
         rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
-        rule.onNodeWithText("Fonte: lançamentos cadastrados neste dispositivo", substring = true).assertExists()
+        rule.onNodeWithText("Fonte: lançamentos confirmados neste dispositivo", substring = true).assertExists()
     }
 }

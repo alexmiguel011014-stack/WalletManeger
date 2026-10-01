@@ -96,7 +96,7 @@ class RepositoryPersistenceTest {
                 .forEach { table -> assertEquals("$table should be cleared", 0, tableCount(db, table)) }
             assertTrue(migrated.dao().allTransactions().isEmpty())
             assertEquals(DefaultCategories.all.map { it.id }.sorted(), migrated.dao().allCategories().map { it.id }.sorted())
-            assertEquals(3, db.version)
+            assertEquals(4, db.version)
             val prefs = DemoPreferences(context).state.first()
             assertTrue(prefs.darkTheme && prefs.reduceMotion && !prefs.showCents)
         } finally {

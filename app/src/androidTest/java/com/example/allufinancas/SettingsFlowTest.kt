@@ -2,6 +2,7 @@ package com.example.allufinancas
 
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -12,12 +13,20 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.state.ToggleableState
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoRepository
+import com.example.allufinancas.data.ImportNoticeKind
+import com.example.allufinancas.data.NotificationImportCandidate
+import com.example.allufinancas.data.NotificationImportSource
+import com.example.allufinancas.notification.NotificationImportCapture
+import com.example.allufinancas.notification.NotificationImportFingerprints
+import java.time.Instant
+import java.time.LocalDate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -108,12 +117,11 @@ class SettingsFlowTest {
         }
 
         openResetConfirmation()
-        assertEquals(
-            2,
-            rule.onAllNodesWithText("Apaga seus lançamentos, limites, metas, avisos, decisões e mensagens", substring = true, useUnmergedTree = true)
-                .fetchSemanticsNodes().size,
+        assertTrue(
+            rule.onAllNodesWithText("rascunhos importados", substring = true, useUnmergedTree = true)
+                .fetchSemanticsNodes().isNotEmpty(),
         )
-        rule.onNodeWithText("As categorias padrão, preferências de exibição e escolha de entrada inicial serão preservadas", substring = true, useUnmergedTree = true).assertExists()
+        rule.onNodeWithText("As categorias padrão e preferências de exibição serão preservadas", substring = true, useUnmergedTree = true).assertExists()
         rule.onNodeWithText("Excluir dados", useUnmergedTree = true).performClick()
         runBlocking {
             withTimeout(10_000) {
@@ -133,19 +141,82 @@ class SettingsFlowTest {
         rule.onNodeWithContentDescription("Mostrar centavos").assertIsOff()
     }
 
+    @Test fun sourceConfigurationSavesOnlyACompleteFourDigitFilter() {
+        runBlocking { repository.enableImportSource(NotificationImportSource.RICO) }
+        enterSettings()
+        rule.waitUntil(10_000) {
+            rule.onAllNodesWithContentDescription("Filtro por quatro dígitos finais").fetchSemanticsNodes().isNotEmpty()
+        }
+        val filter = rule.onNodeWithContentDescription("Filtro por quatro dígitos finais")
+        filter.performTextReplacement("12")
+        rule.onNodeWithText("Salvar filtro").assertIsNotEnabled()
+
+        filter.performTextReplacement("1234")
+        rule.onNodeWithText("Salvar filtro").performClick()
+        runBlocking {
+            withTimeout(10_000) { repository.importFeedSuffix.first { it == "1234" } }
+        }
+        rule.onNodeWithText("Filtro ativo: final •••• 1234").assertExists()
+    }
+
+    @Test fun pendingDraftsRemainUsableAfterSourceDisconnect() {
+        val date = LocalDate.now().toString()
+        runBlocking {
+            repository.enableImportSource(NotificationImportSource.RICO)
+            assertTrue(
+                NotificationImportCapture(context).capture(
+                    NotificationImportCandidate(
+                        source = NotificationImportSource.RICO,
+                        sourceEventHash = NotificationImportFingerprints.sourceEvent(
+                            NotificationImportSource.RICO,
+                            "kept-draft",
+                            "Compra aprovada R$ 8,89",
+                            Instant.parse("2026-09-30T14:00:00Z"),
+                        ),
+                        fingerprintHash = NotificationImportFingerprints.notice(
+                            NotificationImportSource.RICO,
+                            ImportNoticeKind.EXPENSE,
+                            "Estabelecimento a confirmar",
+                            -889,
+                            date,
+                        ),
+                        merchant = "Estabelecimento a confirmar",
+                        description = "Compra aprovada pela Rico",
+                        amountCents = -889,
+                        date = date,
+                        kind = ImportNoticeKind.EXPENSE,
+                        observedAt = Instant.now().toString(),
+                    ),
+                ),
+            )
+            repository.disableImportSource()
+            withTimeout(10_000) { repository.importNotices.first { it.size == 1 } }
+        }
+
+        enterDashboard()
+        rule.onNodeWithContentDescription("Extrato").performClick()
+        rule.waitUntil(10_000) { rule.onAllNodesWithText("Importações pendentes (1)").fetchSemanticsNodes().isNotEmpty() }
+        rule.onNodeWithText("Importações pendentes (1)").performClick()
+        rule.onNodeWithText("Captura pausada").assertExists()
+        rule.onNodeWithText("Saída a confirmar").assertExists()
+        rule.onNodeWithText("Confirmar saída").performClick()
+        rule.onNodeWithText("A origem é Rico", substring = true).assertExists()
+        rule.onNodeWithText("Confirmar no extrato").assertExists()
+    }
+
     private fun assertPrivacyEducationVisible() {
         rule.onNodeWithText("Privacidade e conexões").assertExists()
-        rule.onNodeWithText("Não há conexão com bancos", substring = true).assertExists()
-        rule.onNodeWithText("nem integração com WhatsApp", substring = true).assertExists()
-        rule.onNodeWithText("O que você cadastrar", substring = true).assertExists()
-        rule.onNodeWithText("não envia esses dados para serviços externos", substring = true).assertExists()
+        rule.onNodeWithText("não usa API bancária", substring = true).assertExists()
+        rule.onNodeWithText("Importação opcional da Rico", substring = true).assertExists()
+        rule.onNodeWithText("permissão do sistema é ampla", substring = true).assertExists()
+        rule.onNodeWithText("Nada altera saldo", substring = true).assertExists()
         rule.onNodeWithText("ainda não há exportação", substring = true).assertExists()
-        rule.onNodeWithText("autorização explícita", substring = true).assertExists()
+        rule.onNodeWithText("Desconectar a Rico", substring = true).assertExists()
         assertNoExportAction()
     }
 
     private fun assertSettingsPrivacyCopy() {
-        rule.onNodeWithText("Lançamentos, limites e mensagens do assistente ficam salvos neste dispositivo", substring = true).assertExists()
+        rule.onNodeWithText("A importação opcional da Rico", substring = true).assertExists()
         rule.onNodeWithText("A exportação de dados ainda não está disponível", substring = true).assertExists()
         rule.onNodeWithText("Excluir todos os dados").assertExists()
     }
@@ -167,11 +238,15 @@ class SettingsFlowTest {
     }
 
     private fun enterSettings() {
+        enterDashboard()
+        rule.onNodeWithText("Ajustes").performClick()
+    }
+
+    private fun enterDashboard() {
         if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
             rule.onNodeWithText("Começar a cadastrar").performClick()
         }
         rule.waitUntil(15_000) { rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty() }
-        rule.onNodeWithText("Ajustes").performClick()
     }
 
     private fun openResetConfirmation() {

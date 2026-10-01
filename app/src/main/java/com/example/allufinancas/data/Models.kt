@@ -20,6 +20,77 @@ data class Transaction(
     val recurring: Boolean = false,
     /** Category on the source row; categoryId may be a reversible local override. */
     val sourceCategoryId: String = categoryId,
+    /** Whether the owner entered this ledger row or confirmed a local notification draft. */
+    val origin: TransactionOrigin = TransactionOrigin.MANUAL,
+    /** Stable local import reference when [origin] is [TransactionOrigin.NOTIFICATION_IMPORT]. */
+    val importNoticeId: String? = null,
+)
+
+enum class TransactionOrigin { MANUAL, NOTIFICATION_IMPORT }
+
+/** The deliberately small registry of notification sources supported by this app. */
+enum class NotificationImportSource(
+    val packageName: String,
+    val displayName: String,
+) {
+    RICO("br.com.rico.mobile", "Rico"),
+    ;
+
+    companion object {
+        fun fromPackage(packageName: String): NotificationImportSource? =
+            entries.firstOrNull { it.packageName == packageName }
+    }
+}
+
+/** Classification is a suggestion only; an owner must resolve every imported notice. */
+enum class ImportNoticeKind { EXPENSE, INCOME, NEUTRAL, REFUND_REVIEW }
+enum class ImportNoticeStatus { PENDING, CONFIRMED, IGNORED, NEUTRAL }
+enum class ImportNoticeResolution { IGNORED, NEUTRAL }
+
+/**
+ * A local, redacted draft derived from a supported notification. It intentionally contains
+ * no raw notification body, card number, account number, or source event key.
+ */
+data class ImportNotice(
+    val id: String,
+    val source: NotificationImportSource,
+    val sourceEventHash: String,
+    val fingerprintHash: String,
+    val merchant: String,
+    val description: String,
+    val amountCents: Long,
+    val date: String,
+    val kind: ImportNoticeKind,
+    val status: ImportNoticeStatus,
+    val possibleDuplicate: Boolean,
+    val observedAt: String,
+    val confirmedTransactionId: String? = null,
+)
+
+/** Owner-corrected values used only when a pending draft is explicitly confirmed. */
+data class ImportNoticeConfirmation(
+    val merchant: String,
+    val description: String,
+    val amountCents: Long,
+    val date: String,
+    val categoryId: String,
+    /** Explicit acknowledgement when a matching local ledger row still exists at confirmation. */
+    val acceptPossibleDuplicate: Boolean = false,
+)
+
+/** Safe fields yielded by the pure notification parser for local persistence. */
+data class NotificationImportCandidate(
+    val source: NotificationImportSource,
+    val sourceEventHash: String,
+    val fingerprintHash: String,
+    val merchant: String,
+    val description: String,
+    val amountCents: Long,
+    val date: String,
+    val kind: ImportNoticeKind,
+    val observedAt: String,
+    /** Transient local filter value; it is never written to the queue. */
+    val feedSuffix: String? = null,
 )
 
 object TransactionCategoryRules {

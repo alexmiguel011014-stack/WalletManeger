@@ -23,7 +23,8 @@ import com.example.allufinancas.feature.budgets.BudgetAmount
 
 @Composable internal fun Transactions(
     transactions: List<Transaction>, categories: List<Category>, settings: DisplayPreferences,
-    materializedAt: Instant?, onSave: (Transaction) -> Unit,
+    materializedAt: Instant?, pendingImportCount: Int, onSave: (Transaction) -> Unit,
+    onOpenImports: () -> Unit,
     onTransactionClick: (String) -> Unit,
 ) {
     var adding by rememberSaveable { mutableStateOf(false) }
@@ -63,6 +64,11 @@ import com.example.allufinancas.feature.budgets.BudgetAmount
     LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         item { DemoStrip(scope, materializedAt) }
         item { Button(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) { Text("Adicionar lançamento") } }
+        item {
+            OutlinedButton(onClick = onOpenImports, modifier = Modifier.fillMaxWidth()) {
+                Text("Importações pendentes${if (pendingImportCount > 0) " ($pendingImportCount)" else ""}")
+            }
+        }
         item { OutlinedTextField(search, { search = it }, label = { Text("Buscar estabelecimento") }, modifier = Modifier.fillMaxWidth(), singleLine = true) }
         item {
             androidx.compose.foundation.lazy.LazyRow(
@@ -140,6 +146,9 @@ internal fun transactionById(transactions: List<Transaction>, id: String): Trans
                     Text("Valor: " + brl(transaction.amountCents, settings.showCents), fontSize = 22.sp, fontWeight = FontWeight.Bold)
                     Text("Data: " + transaction.date)
                     Text("Categoria: " + (categories.firstOrNull { it.id == transaction.categoryId }?.name ?: "Sem categoria"))
+                    if (transaction.origin == TransactionOrigin.NOTIFICATION_IMPORT) {
+                        Text("Origem: notificação local da Rico confirmada")
+                    }
                     if (transaction.categoryId != transaction.sourceCategoryId) {
                         Text("Categoria da origem: " + (categories.firstOrNull { it.id == transaction.sourceCategoryId }?.name ?: "Sem categoria") + " · ajuste local reversível")
                     }
@@ -281,7 +290,7 @@ private fun TransactionEditor(
             TextButton(enabled = valid, onClick = {
                 cents?.let { value -> onSave(Transaction(
                     id = id,
-                    accountId = "manual-ledger",
+                    accountId = transaction?.accountId ?: "manual-ledger",
                     merchant = merchant.trim(),
                     description = description.trim(),
                     amountCents = if (income) value else -value,
@@ -290,6 +299,8 @@ private fun TransactionEditor(
                     installmentNumber = parsedInstallmentNumber.takeIf { hasInstallments },
                     installmentCount = parsedInstallmentCount.takeIf { hasInstallments },
                     recurring = !income && recurring,
+                    origin = transaction?.origin ?: TransactionOrigin.MANUAL,
+                    importNoticeId = transaction?.importNoticeId,
                 )) }
             }) { Text("Salvar") }
         },

@@ -51,7 +51,7 @@ import java.util.Locale
         ?.plus(" (hora local)") ?: "indisponível"
     Surface(color = AlluTint, shape = RoundedCornerShape(AlluTokens.Radius.chip), modifier = Modifier.fillMaxWidth()) {
         Text(
-            "DADOS LOCAIS · Fonte: lançamentos cadastrados neste dispositivo · Atualizado: $localTimestamp · Escopo: $scope",
+            "DADOS LOCAIS · Fonte: lançamentos confirmados neste dispositivo · Atualizado: $localTimestamp · Escopo: $scope",
             Modifier.padding(AlluTokens.Spacing.xs), color = AlluNavy, style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
         )

@@ -39,6 +39,8 @@ import com.example.allufinancas.feature.budgets.Budgets
 import com.example.allufinancas.feature.budgets.BudgetsViewModel
 import com.example.allufinancas.feature.home.Home
 import com.example.allufinancas.feature.home.HomeViewModel
+import com.example.allufinancas.feature.imports.ImportInbox
+import com.example.allufinancas.feature.imports.ImportInboxViewModel
 import com.example.allufinancas.feature.onboarding.PrivacyEducation
 import com.example.allufinancas.feature.onboarding.Welcome
 import com.example.allufinancas.feature.settings.Settings
@@ -60,6 +62,7 @@ internal enum class Page(val label: String, val route: String, val icon: String)
 private val tabs = listOf(Page.HOME, Page.TRANSACTIONS, Page.BUDGETS, Page.ALERTS, Page.ASSISTANT)
 private const val PRIVACY_ROUTE = "privacy"
 private const val REVIEW_ROUTE = "alerts/review"
+private const val IMPORTS_ROUTE = "imports"
 private const val TRANSACTION_DETAIL_ROUTE = "transaction/{transactionId}"
 internal fun transactionDetailRoute(id: String) = "transaction/${Uri.encode(id)}"
 
@@ -112,7 +115,7 @@ private fun AlluNavigation(
     LaunchedEffect(route) { tabs.firstOrNull { it.route == route }?.let { selectedTab = it } }
 
     fun selectTab(tab: Page) {
-        if (route == Page.SETTINGS.route || route == PRIVACY_ROUTE || route?.startsWith("transaction/") == true) {
+        if (route == Page.SETTINGS.route || route == PRIVACY_ROUTE || route == REVIEW_ROUTE || route == IMPORTS_ROUTE || route?.startsWith("transaction/") == true) {
             navController.popBackStack(selectedTab.route, inclusive = false)
         }
         selectedTab = tab
@@ -128,10 +131,11 @@ private fun AlluNavigation(
         Page.SETTINGS.route -> Page.SETTINGS.label
         PRIVACY_ROUTE -> "Privacidade e limitações"
         REVIEW_ROUTE -> "Revisão de lançamentos"
+        IMPORTS_ROUTE -> "Importações pendentes"
         TRANSACTION_DETAIL_ROUTE -> "Detalhes do lançamento"
         else -> tabs.firstOrNull { it.route == route }?.label ?: "ALLU Finanças"
     }
-    val canGoBack = route == Page.SETTINGS.route || route == PRIVACY_ROUTE || route == REVIEW_ROUTE || route?.startsWith("transaction/") == true
+    val canGoBack = route == Page.SETTINGS.route || route == PRIVACY_ROUTE || route == REVIEW_ROUTE || route == IMPORTS_ROUTE || route?.startsWith("transaction/") == true
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val useRail = maxWidth >= 600.dp
@@ -193,7 +197,15 @@ private fun AlluNavigation(
                             val screenModel: TransactionsViewModel = viewModel(factory = factory)
                             val screen by screenModel.state.collectAsStateWithLifecycle()
                             ScreenContent(screen) { data ->
-                                Transactions(data.transactions, data.categories, data.preferences, materializedAt, stateModel::saveTransaction) { id ->
+                                Transactions(
+                                    data.transactions,
+                                    data.categories,
+                                    data.preferences,
+                                    materializedAt,
+                                    data.pendingImportCount,
+                                    stateModel::saveTransaction,
+                                    onOpenImports = { navController.navigate(IMPORTS_ROUTE) { launchSingleTop = true } },
+                                ) { id ->
                                     navController.navigate(transactionDetailRoute(id))
                                 }
                             }
@@ -222,6 +234,19 @@ private fun AlluNavigation(
                                 )
                             }
                         }
+                        composable(IMPORTS_ROUTE) {
+                            val screenModel: ImportInboxViewModel = viewModel(factory = factory)
+                            val screen by screenModel.state.collectAsStateWithLifecycle()
+                            ScreenContent(screen) { data ->
+                                ImportInbox(
+                                    data = data,
+                                    materializedAt = materializedAt,
+                                    onOpenSettings = { navController.navigate(Page.SETTINGS.route) { launchSingleTop = true } },
+                                    onConfirm = stateModel::confirmImport,
+                                    onResolve = stateModel::resolveImport,
+                                )
+                            }
+                        }
                         composable(Page.ASSISTANT.route) {
                             val screenModel: AssistantViewModel = viewModel(factory = factory)
                             val screen by screenModel.state.collectAsStateWithLifecycle()
@@ -230,7 +255,14 @@ private fun AlluNavigation(
                         composable(Page.SETTINGS.route) {
                             val screenModel: SettingsViewModel = viewModel(factory = factory)
                             val screen by screenModel.state.collectAsStateWithLifecycle()
-                            ScreenContent(screen) { Settings(it.preferences, materializedAt, stateModel) { navController.navigate(PRIVACY_ROUTE) { launchSingleTop = true } }
+                            ScreenContent(screen) {
+                                Settings(
+                                    it.preferences,
+                                    it.enabledImportSource,
+                                    it.importFeedSuffix,
+                                    materializedAt,
+                                    stateModel,
+                                ) { navController.navigate(PRIVACY_ROUTE) { launchSingleTop = true } }
                             }
                         }
                         composable(PRIVACY_ROUTE) { PrivacyEducation(materializedAt, onBack = { navController.popBackStack() }) }

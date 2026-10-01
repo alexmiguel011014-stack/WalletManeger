@@ -2,6 +2,7 @@ package com.example.allufinancas.data
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flowOf
 import java.time.Instant
 
 /** UI-facing contract; Android Context stays inside the repository. */
@@ -18,6 +19,15 @@ interface DemoDataSource {
     val messages: Flow<List<AssistantMessage>>
     val preferences: Flow<DisplayPreferences>
     val materializedAt: Flow<Instant?>
+    /** The one source the owner has enabled locally, separate from Android's system permission. */
+    val enabledImportSource: Flow<NotificationImportSource?>
+        get() = flowOf(null)
+    /** Optional last four digits identifying the selected source feed; never a full account number. */
+    val importFeedSuffix: Flow<String?>
+        get() = flowOf(null)
+    /** Draft imports stay separate from [transactions] until the owner confirms one. */
+    val importNotices: Flow<List<ImportNotice>>
+        get() = flowOf(emptyList())
 
     suspend fun saveTransaction(transaction: Transaction)
     suspend fun deleteTransaction(id: String)
@@ -31,4 +41,12 @@ interface DemoDataSource {
     suspend fun setDarkTheme(enabled: Boolean)
     suspend fun setReduceMotion(enabled: Boolean)
     suspend fun setShowCents(enabled: Boolean)
+
+    suspend fun enableImportSource(source: NotificationImportSource) = Unit
+    suspend fun disableImportSource() = Unit
+    suspend fun setImportFeedSuffix(suffix: String?) = Unit
+    /** Returns the one resulting ledger ID, including when a repeated confirmation is replayed. */
+    suspend fun confirmImportNotice(noticeId: String, confirmation: ImportNoticeConfirmation): String? = null
+    suspend fun resolveImportNotice(noticeId: String, resolution: ImportNoticeResolution) = Unit
+    suspend fun clearPendingImports() = Unit
 }

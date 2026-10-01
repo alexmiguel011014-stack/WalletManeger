@@ -5,6 +5,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.allufinancas.data.DemoDataSource
 import com.example.allufinancas.data.DisplayPreferences
+import com.example.allufinancas.data.ImportNoticeConfirmation
+import com.example.allufinancas.data.ImportNoticeResolution
+import com.example.allufinancas.data.NotificationImportSource
 import com.example.allufinancas.feature.alerts.AlertsViewModel
 import com.example.allufinancas.feature.assistant.AssistantViewModel
 import com.example.allufinancas.feature.budgets.BudgetsViewModel
@@ -78,6 +81,53 @@ class AlluViewModel(internal val dataSource: DemoDataSource) : ViewModel() {
             .onFailure { _notice.value = "Não foi possível excluir os dados" }
     }
 
+    fun enableImportSource(source: NotificationImportSource) = viewModelScope.launch {
+        runCatching { dataSource.enableImportSource(source) }
+            .onSuccess { _notice.value = "${source.displayName} selecionada. Ative o acesso a notificações do Android." }
+            .onFailure { _notice.value = "Não foi possível selecionar ${source.displayName}" }
+    }
+
+    fun disconnectImport(discardPending: Boolean) = viewModelScope.launch {
+        runCatching {
+            dataSource.disableImportSource()
+            if (discardPending) dataSource.clearPendingImports()
+        }.onSuccess {
+            _notice.value = if (discardPending) "Rico desconectada e rascunhos pendentes descartados" else "Rico desconectada; rascunhos pendentes foram mantidos"
+        }.onFailure {
+            _notice.value = "Não foi possível desconectar a Rico"
+        }
+    }
+
+    fun setImportFeedSuffix(suffix: String?) = viewModelScope.launch {
+        runCatching { dataSource.setImportFeedSuffix(suffix) }
+            .onSuccess {
+                _notice.value = if (suffix == null) "Filtro da conta ou cartão removido" else "Filtro pelos quatro dígitos finais salvo"
+            }
+            .onFailure {
+                _notice.value = it.message ?: "Não foi possível salvar o filtro"
+            }
+    }
+
+    fun confirmImport(noticeId: String, confirmation: ImportNoticeConfirmation) = viewModelScope.launch {
+        runCatching { dataSource.confirmImportNotice(noticeId, confirmation) }
+            .onSuccess { transactionId ->
+                _notice.value = if (transactionId == null) {
+                    "Possível duplicidade: reabra o rascunho, revise e marque que deseja confirmar."
+                } else "Lançamento confirmado no extrato"
+            }.onFailure {
+                _notice.value = it.message ?: "Não foi possível confirmar o lançamento"
+            }
+    }
+
+    fun resolveImport(noticeId: String, resolution: ImportNoticeResolution) = viewModelScope.launch {
+        runCatching { dataSource.resolveImportNotice(noticeId, resolution) }
+            .onSuccess {
+                _notice.value = if (resolution == ImportNoticeResolution.NEUTRAL) "Aviso marcado como neutro" else "Rascunho ignorado"
+            }.onFailure {
+                _notice.value = "Não foi possível atualizar o rascunho"
+            }
+    }
+
     fun setDarkTheme(value: Boolean) = viewModelScope.launch { dataSource.setDarkTheme(value) }
     fun setReduceMotion(value: Boolean) = viewModelScope.launch { dataSource.setReduceMotion(value) }
     fun setShowCents(value: Boolean) = viewModelScope.launch { dataSource.setShowCents(value) }
@@ -95,6 +145,7 @@ class AlluViewModelFactory(private val dataSource: DemoDataSource) : ViewModelPr
             modelClass.isAssignableFrom(AlertsViewModel::class.java) -> AlertsViewModel(dataSource)
             modelClass.isAssignableFrom(AssistantViewModel::class.java) -> AssistantViewModel(dataSource)
             modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(dataSource)
+            modelClass.isAssignableFrom(com.example.allufinancas.feature.imports.ImportInboxViewModel::class.java) -> com.example.allufinancas.feature.imports.ImportInboxViewModel(dataSource)
             else -> error("ViewModel não registrado: ${modelClass.name}")
         }
         return model as T
