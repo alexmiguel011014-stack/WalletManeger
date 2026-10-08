@@ -271,6 +271,9 @@ class SettingsFlowTest {
   }
 
   private fun assertSettingsPrivacyCopy() {
+    rule
+        .onNode(hasScrollToIndexAction())
+        .performScrollToNode(hasText("A importação opcional da Rico", substring = true))
     rule.onNodeWithText("A importação opcional da Rico", substring = true).assertExists()
     rule
         .onNodeWithText("A exportação de dados ainda não está disponível", substring = true)

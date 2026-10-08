@@ -277,7 +277,9 @@ private fun AlluNavigation(
                     data.categories,
                     materializedAt,
                     stateModel::decideReview,
-                    stateModel::setCategory,
+                    { transactionId, categoryId ->
+                      stateModel.setCategory(transactionId, categoryId)
+                    },
                     stateModel::reopenReview,
                 )
               }
@@ -345,8 +347,9 @@ private fun AlluNavigation(
                     data.preferences,
                     onBack = { navController.popBackStack() },
                     onCategory = { transactionId, categoryId ->
-                      stateModel.setCategory(transactionId, categoryId)
-                      navController.popBackStack()
+                      stateModel.setCategory(transactionId, categoryId) {
+                        navController.popBackStack()
+                      }
                     },
                     onSave = stateModel::saveTransaction,
                     onDelete = stateModel::deleteTransaction,

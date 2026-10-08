@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -37,9 +38,10 @@ class AlluViewModelActionsTest {
       runTest(dispatcher) {
         val source = RecordingDemoDataSource()
         val viewModel = AlluViewModel(source)
+        var categorySaved = false
 
         viewModel.updateBudget("food", 12_345)
-        viewModel.setCategory("tx", "food")
+        viewModel.setCategory("tx", "food") { categorySaved = true }
         viewModel.decideReview("duplicate-tx")
         viewModel.reopenReview("duplicate-tx")
         viewModel.setAlertDismissed("alert", true)
@@ -66,6 +68,7 @@ class AlluViewModelActionsTest {
             source.actions,
         )
         assertEquals("Dados financeiros locais excluídos", viewModel.notice.value)
+        assertTrue(categorySaved)
         viewModel.clearNotice()
         assertNull(viewModel.notice.value)
       }

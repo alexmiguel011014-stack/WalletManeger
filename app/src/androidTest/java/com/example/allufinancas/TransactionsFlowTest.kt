@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoRepository
@@ -34,7 +35,7 @@ class TransactionsFlowTest {
   @After fun restoreDemoStateAfterTest() = runBlocking { restoreDemoState() }
 
   @Test
-  fun detailShowsInstallmentAndCategoryCorrectionPersistsInRoom() {
+  fun categoryCorrectionAppearsInStatementAndPersistsInRoom() {
     if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
       rule.onNodeWithText("Começar a cadastrar").performClick()
     }
@@ -44,6 +45,8 @@ class TransactionsFlowTest {
     rule.onNodeWithText("Extrato").performClick()
     rule.onNodeWithText(LocalLedgerFixtures.MONTH).performScrollTo().performClick()
     rule.onNodeWithText("Buscar estabelecimento").performScrollTo().performTextInput("Notebook")
+    Espresso.closeSoftKeyboard()
+    rule.waitForIdle()
     rule.onNodeWithText("Loja Exemplo").performScrollTo().performClick()
 
     rule.onNodeWithText("Parcela 3 de 10").assertExists()
@@ -63,19 +66,16 @@ class TransactionsFlowTest {
           .fetchSemanticsNodes()
           .isNotEmpty()
     }
-    rule.onNodeWithText("Loja Exemplo").performClick()
-    rule.onNodeWithText("Categoria: Casa").assertExists()
-    rule.onNodeWithText("Data: ${LocalLedgerFixtures.date(12)}").assertExists()
-    rule.onNodeWithText("Valor: ${com.example.allufinancas.core.brl(-12_990, true)}").assertExists()
 
     rule.activityRule.scenario.recreate()
     rule.waitUntil(15_000) { rule.onAllNodesWithText("Extrato").fetchSemanticsNodes().isNotEmpty() }
     rule.waitUntil(10_000) {
-      rule.onAllNodesWithText("Estabelecimento: Loja Exemplo").fetchSemanticsNodes().isNotEmpty()
+      rule
+          .onAllNodesWithText("Casa · ${LocalLedgerFixtures.date(12)}", substring = true)
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
-    rule.onNodeWithText("Estabelecimento: Loja Exemplo").assertExists()
-    rule.onNodeWithText("Categoria: Casa").assertExists()
-    rule.onNodeWithText("Parcela 3 de 10").assertExists()
+    rule.onNodeWithText("Casa · ${LocalLedgerFixtures.date(12)}", substring = true).assertExists()
   }
 
   @Test

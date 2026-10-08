@@ -78,6 +78,7 @@ class NavigationFlowTest {
     rule.onNodeWithText("Privacidade e conexões").assertExists()
     rule.onNodeWithText("O app não usa API bancária", substring = true).assertExists()
     pressBack()
+    rule.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Preferência de exibição"))
     rule.onNodeWithText("Preferência de exibição").assertExists()
     pressBack()
     rule.onNodeWithText("Notebook").assertExists()

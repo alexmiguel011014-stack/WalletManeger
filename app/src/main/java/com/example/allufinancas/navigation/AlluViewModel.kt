@@ -51,9 +51,16 @@ class AlluViewModel(internal val dataSource: DemoDataSource) : ViewModel() {
         .onFailure { _notice.value = it.message ?: "Não foi possível excluir o lançamento" }
   }
 
-  fun setCategory(transactionId: String, categoryId: String) = viewModelScope.launch {
+  fun setCategory(
+      transactionId: String,
+      categoryId: String,
+      onSuccess: () -> Unit = {},
+  ) = viewModelScope.launch {
     runCatching { dataSource.setTransactionCategory(transactionId, categoryId) }
-        .onSuccess { _notice.value = "Categoria atualizada" }
+        .onSuccess {
+          _notice.value = "Categoria atualizada"
+          onSuccess()
+        }
         .onFailure { _notice.value = "Não foi possível alterar a categoria" }
   }
 
