@@ -5,5 +5,5 @@ import com.example.allufinancas.data.DemoDataSource
 import com.example.allufinancas.data.DemoRepository
 
 class AlluApplication : Application() {
-    val demoDataSource: DemoDataSource by lazy { DemoRepository(this) }
+  val demoDataSource: DemoDataSource by lazy { DemoRepository(this) }
 }

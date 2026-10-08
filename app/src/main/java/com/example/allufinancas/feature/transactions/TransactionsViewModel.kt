@@ -2,7 +2,6 @@ package com.example.allufinancas.feature.transactions
 
 import com.example.allufinancas.data.*
 import com.example.allufinancas.navigation.DataScreenViewModel
-import com.example.allufinancas.navigation.ScreenUiState
 import kotlinx.coroutines.flow.*
 
 internal data class TransactionsUiData(
@@ -13,19 +12,20 @@ internal data class TransactionsUiData(
 )
 
 internal class TransactionsViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
-    private val screenData = combine(
-        dataSource.transactions,
-        dataSource.categories,
-        dataSource.preferences,
-        dataSource.importNotices,
-    ) { transactions, categories, settings, notices ->
+  private val screenData =
+      combine(
+          dataSource.transactions,
+          dataSource.categories,
+          dataSource.preferences,
+          dataSource.importNotices,
+      ) { transactions, categories, settings, notices ->
         TransactionsUiData(
             transactions = transactions,
             categories = categories,
             preferences = settings,
             pendingImportCount = notices.count { it.status == ImportNoticeStatus.PENDING },
         )
-    }
+      }
 
-    internal val state = stateFor(screenData) { it.transactions.isEmpty() }
+  internal val state = stateFor(screenData) { it.transactions.isEmpty() }
 }

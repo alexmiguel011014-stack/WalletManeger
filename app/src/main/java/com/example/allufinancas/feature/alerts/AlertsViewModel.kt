@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 internal data class AlertsUiData(val alerts: List<Alert>)
+
 internal data class ReviewUiData(
     val cases: List<ReconciliationCase>,
     val transactions: List<Transaction>,
@@ -14,8 +15,16 @@ internal data class ReviewUiData(
 )
 
 internal class AlertsViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
-    internal val state = stateFor(dataSource.alerts.map(::AlertsUiData)) { it.alerts.isEmpty() }
-    internal val reviewState = stateFor(
-        combine(dataSource.reconciliationCases, dataSource.transactions, dataSource.categories, ::ReviewUiData),
-    ) { it.cases.isEmpty() }
+  internal val state = stateFor(dataSource.alerts.map(::AlertsUiData)) { it.alerts.isEmpty() }
+  internal val reviewState =
+      stateFor(
+          combine(
+              dataSource.reconciliationCases,
+              dataSource.transactions,
+              dataSource.categories,
+              ::ReviewUiData,
+          ),
+      ) {
+        it.cases.isEmpty()
+      }
 }

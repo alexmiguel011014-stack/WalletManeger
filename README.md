@@ -9,11 +9,10 @@ The current deliverable is a debug APK for local evaluation, not a production-si
 Prerequisites: JDK 21 and Android SDK Platform 36 with build tools, with `JAVA_HOME` and `ANDROID_HOME` set. On Windows, from this directory:
 
 ```powershell
-.\gradlew.bat :app:assembleDebug
-.\gradlew.bat :app:testDebugUnitTest
-.\gradlew.bat :app:lintDebug
-.\gradlew.bat :app:connectedDebugAndroidTest
+.\gradlew.bat :app:qualityCheck
 ```
+
+qualityCheck runs formatting checks, static lint analysis, unit tests, instrumented tests, and debug APK assembly in that order. It stops with Gradle's non-zero result when a step fails. Formatting is checked with the pinned Spotless 8.10.2 Gradle plugin and ktfmt for Kotlin sources in `app` plus `app/build.gradle.kts`. Connect a booted emulator or Android device before running it, because instrumented tests are included.
 
 The APK is produced at `app\build\outputs\apk\debug\app-debug.apk`. Install on an emulator or Android device with `adb install -r app\build\outputs\apk\debug\app-debug.apk`. The instrumented suite requires a booted emulator or device and was exercised on the Android 17/API 37 emulator. Only debug is intended for use in this phase. Do not create a release keystore or publish the APK as a financial service.
 

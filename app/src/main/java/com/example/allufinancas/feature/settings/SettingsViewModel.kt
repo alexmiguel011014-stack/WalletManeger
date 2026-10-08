@@ -13,13 +13,17 @@ internal data class SettingsUiData(
 )
 
 internal class SettingsViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
-    internal val state = stateFor(
-        combine(dataSource.preferences, dataSource.enabledImportSource, dataSource.importFeedSuffix) {
-                preferences,
-                source,
-                suffix,
+  internal val state =
+      stateFor(
+          combine(
+              dataSource.preferences,
+              dataSource.enabledImportSource,
+              dataSource.importFeedSuffix,
+          ) { preferences, source, suffix,
             ->
             SettingsUiData(preferences, source, suffix)
-        },
-    ) { false }
+          },
+      ) {
+        false
+      }
 }

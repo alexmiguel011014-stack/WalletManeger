@@ -14,7 +14,15 @@ internal data class AssistantUiData(
 )
 
 internal class AssistantViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
-    internal val state = stateFor(
-        combine(dataSource.messages, dataSource.transactions, dataSource.categories, ::AssistantUiData),
-    ) { it.messages.isEmpty() }
+  internal val state =
+      stateFor(
+          combine(
+              dataSource.messages,
+              dataSource.transactions,
+              dataSource.categories,
+              ::AssistantUiData,
+          ),
+      ) {
+        it.messages.isEmpty()
+      }
 }

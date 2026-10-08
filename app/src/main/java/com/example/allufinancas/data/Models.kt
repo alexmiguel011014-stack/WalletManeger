@@ -26,30 +26,49 @@ data class Transaction(
     val importNoticeId: String? = null,
 )
 
-enum class TransactionOrigin { MANUAL, NOTIFICATION_IMPORT }
+enum class TransactionOrigin {
+  MANUAL,
+  NOTIFICATION_IMPORT,
+}
 
 /** The deliberately small registry of notification sources supported by this app. */
 enum class NotificationImportSource(
     val packageName: String,
     val displayName: String,
 ) {
-    RICO("br.com.rico.mobile", "Rico"),
-    ;
+  RICO("br.com.rico.mobile", "Rico"),
+  ;
 
-    companion object {
-        fun fromPackage(packageName: String): NotificationImportSource? =
-            entries.firstOrNull { it.packageName == packageName }
+  companion object {
+    fun fromPackage(packageName: String): NotificationImportSource? = entries.firstOrNull {
+      it.packageName == packageName
     }
+  }
 }
 
 /** Classification is a suggestion only; an owner must resolve every imported notice. */
-enum class ImportNoticeKind { EXPENSE, INCOME, NEUTRAL, REFUND_REVIEW }
-enum class ImportNoticeStatus { PENDING, CONFIRMED, IGNORED, NEUTRAL }
-enum class ImportNoticeResolution { IGNORED, NEUTRAL }
+enum class ImportNoticeKind {
+  EXPENSE,
+  INCOME,
+  NEUTRAL,
+  REFUND_REVIEW,
+}
+
+enum class ImportNoticeStatus {
+  PENDING,
+  CONFIRMED,
+  IGNORED,
+  NEUTRAL,
+}
+
+enum class ImportNoticeResolution {
+  IGNORED,
+  NEUTRAL,
+}
 
 /**
- * A local, redacted draft derived from a supported notification. It intentionally contains
- * no raw notification body, card number, account number, or source event key.
+ * A local, redacted draft derived from a supported notification. It intentionally contains no raw
+ * notification body, card number, account number, or source event key.
  */
 data class ImportNotice(
     val id: String,
@@ -94,17 +113,27 @@ data class NotificationImportCandidate(
 )
 
 object TransactionCategoryRules {
-    const val INCOME_CATEGORY_ID = "receita"
+  const val INCOME_CATEGORY_ID = "receita"
 
-    fun isCompatible(categoryId: String, amountCents: Long): Boolean =
-        (amountCents > 0) == (categoryId == INCOME_CATEGORY_ID)
+  fun isCompatible(categoryId: String, amountCents: Long): Boolean =
+      (amountCents > 0) == (categoryId == INCOME_CATEGORY_ID)
 
-    fun compatible(categories: List<Category>, amountCents: Long): List<Category> =
-        categories.filter { isCompatible(it.id, amountCents) }
+  fun compatible(categories: List<Category>, amountCents: Long): List<Category> =
+      categories.filter {
+        isCompatible(it.id, amountCents)
+      }
 }
 
-enum class ReviewKind { UNCATEGORIZED, POSSIBLE_DUPLICATE, UNUSUAL_AMOUNT }
-enum class ReviewStrength { LIMITED, MODERATE }
+enum class ReviewKind {
+  UNCATEGORIZED,
+  POSSIBLE_DUPLICATE,
+  UNUSUAL_AMOUNT,
+}
+
+enum class ReviewStrength {
+  LIMITED,
+  MODERATE,
+}
 
 data class ReconciliationCase(
     val id: String,
@@ -136,7 +165,11 @@ data class Insight(
     val transactionIds: List<String> = emptyList(),
 )
 
-enum class InsightSeverity { INFO, WARNING, CRITICAL }
+enum class InsightSeverity {
+  INFO,
+  WARNING,
+  CRITICAL,
+}
 
 data class Alert(
     val id: String,
@@ -163,7 +196,10 @@ data class AssistantMessage(
     val citationTransactionIds: List<String> = emptyList(),
 )
 
-enum class MessageRole { USER, ASSISTANT }
+enum class MessageRole {
+  USER,
+  ASSISTANT,
+}
 
 data class AssistantAnswer(
     val text: String,

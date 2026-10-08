@@ -12,16 +12,21 @@ internal fun calculateBudgetScenario(
     spentCents: Long,
     proposedLimitCents: Long,
 ): BudgetScenarioResult? {
-    val safeCents = 0L..BudgetAmount.maximumCents
-    if (currentLimitCents !in safeCents || spentCents !in safeCents || proposedLimitCents !in 1L..BudgetAmount.maximumCents) {
-        return null
-    }
-    return runCatching {
+  val safeCents = 0L..BudgetAmount.maximumCents
+  if (
+      currentLimitCents !in safeCents ||
+          spentCents !in safeCents ||
+          proposedLimitCents !in 1L..BudgetAmount.maximumCents
+  ) {
+    return null
+  }
+  return runCatching {
         BudgetScenarioResult(
             hypotheticalLimitCents = proposedLimitCents,
             spentCents = spentCents,
             hypotheticalBalanceCents = Math.subtractExact(proposedLimitCents, spentCents),
             limitDifferenceCents = Math.subtractExact(proposedLimitCents, currentLimitCents),
         )
-    }.getOrNull()
+      }
+      .getOrNull()
 }
