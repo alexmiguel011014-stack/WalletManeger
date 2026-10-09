@@ -32,6 +32,19 @@ class AccessibilitySemanticsTest {
   }
 
   @Test
+  fun welcomeExposesWalletManagerNameAndBrandMark() {
+    val context = InstrumentationRegistry.getInstrumentation().targetContext
+    context.getSharedPreferences("allu_welcome", 0).edit().putBoolean("entered", false).commit()
+    rule.activityRule.scenario.recreate()
+
+    rule.waitUntil(15_000) {
+      rule.onAllNodesWithText("wallet", substring = true).fetchSemanticsNodes().isNotEmpty()
+    }
+    rule.onNodeWithText("wallet", substring = true).assertExists()
+    rule.onNodeWithContentDescription("Símbolo wallet Manager").assertExists()
+  }
+
+  @Test
   fun bottomNavigationDestinationsExposeLabelsActionsAndSelectedState() {
     enterDashboard()
 

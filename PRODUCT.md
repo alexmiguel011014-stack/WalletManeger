@@ -20,7 +20,7 @@ Deliver an installable Android prototype that combines a concise money overview,
 
 ## Positioning
 
-The product shows where each finance summary came from and how each demo calculation was made, while using the user's existing ALLU identity across the app.
+The product shows where each finance summary came from and how each demo calculation was made, while using the user's wallet Manager identity across the app.
 
 ## Operating Context
 
@@ -31,15 +31,15 @@ The owner evaluates a locally installed APK on an Android emulator or phone. A u
 - Offline fictional dataset, local calculations, local assistant responses, and resettable demo state.
 - No live bank connection, payments, investment execution, or WhatsApp interaction in this release.
 - Brazilian Portuguese and BRL display.
-- Debug APK is the current deliverable. A final release name, package identifier, signing method, and publication route are open decisions.
+- Debug APK is the current deliverable. The release name is wallet Manager; package identifier, signing method, and publication route remain open decisions.
 
 ## Brand Commitments
 
-On 23 September 2026 the owner requested an original app identity using ALLU ERP's visual colors/style and ALLU symbol. The temporary app label is “ALLU Finanças”. The source assets and tokens are in `D:\ProjetosPessoais\ERP\frontend\public\images\logo` and `D:\ProjetosPessoais\ERP\frontend\src\app\globals.css`. Pierre remains a feature/workflow reference only.
+On 8 October 2026 the owner requested an original app identity using the wallet Manager visual colors and icon. The product label is “wallet Manager”. The source assets are `D:\ProjetosPessoais\Logo\apps\wallet-logo.svg` and `D:\ProjetosPessoais\Logo\apps\wallet-icon.svg`. Pierre remains a feature/workflow reference only.
 
 ## Evidence on Hand
 
-`REPERTOIRE.md` and `Relatório — Pierre.md` summarize public Pierre capabilities. `GOALS.md` is the approved execution plan. ALLU ERP source files provide the owner's visual reference. No real customer data or owner-approved Android screenshot baseline is present.
+`REPERTOIRE.md` and `Relatório — Pierre.md` summarize public Pierre capabilities. `GOALS.md` is the approved execution plan. wallet Manager logo files provide the owner's visual reference. No real customer data or owner-approved Android screenshot baseline is present.
 
 ## Product Principles
 

@@ -5,7 +5,7 @@ import androidx.compose.animation.core.Easing
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
-/** ALLU Finanças layout, shape, icon, and motion values. Spacing follows a 4 dp grid. */
+/** wallet Manager layout, shape, icon, and motion values. Spacing follows a 4 dp grid. */
 internal object AlluTokens {
   object Spacing {
     val xxs: Dp = 4.dp

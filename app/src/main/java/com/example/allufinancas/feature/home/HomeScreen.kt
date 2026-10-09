@@ -73,10 +73,10 @@ internal fun Home(
       ) {
         Column(Modifier.padding(22.dp)) {
           Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.allu_mark_white), null, Modifier.size(22.dp, 30.dp))
+            Image(painterResource(R.drawable.wallet_mark), null, Modifier.size(22.dp, 30.dp))
             Spacer(Modifier.width(10.dp))
             Text(
-                "ALLU FINANÇAS",
+                "wallet Manager",
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,

@@ -54,7 +54,7 @@ internal fun PrivacyEducation(materializedAt: Instant?, onBack: () -> Unit) {
       )
       Spacer(Modifier.height(6.dp))
       Text(
-          "Você pode escolher a Rico em Ajustes e autorizar o acesso a notificações no Android. Essa permissão do sistema é ampla; o ALLU confere primeiro o app de origem e lê somente a Rico selecionada. Se a notificação mostrar um final de conta ou cartão confiável, você pode informar apenas os quatro últimos dígitos para limitar ainda mais a captura."
+          "Você pode escolher a Rico em Ajustes e autorizar o acesso a notificações no Android. Essa permissão do sistema é ampla; o wallet Manager confere primeiro o app de origem e lê somente a Rico selecionada. Se a notificação mostrar um final de conta ou cartão confiável, você pode informar apenas os quatro últimos dígitos para limitar ainda mais a captura."
       )
     }
     Panel {

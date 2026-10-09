@@ -143,7 +143,7 @@ private fun ImportSettings(
     )
     Spacer(Modifier.height(8.dp))
     Text(
-        "O Android concede acesso amplo às notificações. ALLU só lê e guarda campos mínimos de avisos da fonte escolhida; os demais apps são descartados antes de abrir o conteúdo."
+        "O Android concede acesso amplo às notificações. O wallet Manager só lê e guarda campos mínimos de avisos da fonte escolhida; os demais apps são descartados antes de abrir o conteúdo."
     )
     Spacer(Modifier.height(8.dp))
     if (source == null) {

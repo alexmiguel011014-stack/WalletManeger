@@ -179,7 +179,7 @@ internal fun ImportInbox(
             EmptyState(
                 title = "Acesso a notificações não autorizado",
                 message =
-                    "A Rico está selecionada, mas o Android ainda não liberou o acesso a notificações do ALLU. Nenhum aviso novo será capturado até você autorizar e voltar ao app.",
+                    "A Rico está selecionada, mas o Android ainda não liberou o acesso a notificações do wallet Manager. Nenhum aviso novo será capturado até você autorizar e voltar ao app.",
                 actionLabel = "Abrir ajustes",
                 onAction = onOpenSettings,
             )

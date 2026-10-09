@@ -253,7 +253,7 @@ internal fun AlluContentEntrance(
                     targetOffsetY = { fullHeight -> fullHeight / 40 },
                 )
           },
-      label = "ALLU content entrance",
+      label = "wallet Manager content entrance",
       content = { content() },
   )
 }

@@ -147,7 +147,7 @@ private fun AlluNavigation(
         REVIEW_ROUTE -> "Revisão de lançamentos"
         IMPORTS_ROUTE -> "Importações pendentes"
         TRANSACTION_DETAIL_ROUTE -> "Detalhes do lançamento"
-        else -> tabs.firstOrNull { it.route == route }?.label ?: "ALLU Finanças"
+        else -> tabs.firstOrNull { it.route == route }?.label ?: "wallet Manager"
       }
   val canGoBack =
       route == Page.SETTINGS.route ||

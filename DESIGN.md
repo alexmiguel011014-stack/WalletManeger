@@ -1,29 +1,28 @@
-# ALLU Finanças — visual and interaction brief
+# wallet Manager — visual and interaction brief
 
-This Android app has its own product identity. Pierre informs the choice of finance workflows, not its copy, screenshots, illustrations, or trade dress. The owner chose ALLU ERP's existing visual identity on 23 September 2026. “ALLU Finanças” is a working label for a fictional, offline prototype.
+This Android app has its own product identity. Pierre informs the choice of finance workflows, not its copy, screenshots, illustrations, or trade dress. The owner chose the wallet Manager identity on 8 October 2026. “wallet Manager” is the display name for this fictional, offline prototype.
 
 ## Provenance
 
 | Reference | Source | Android adaptation |
 | --- | --- | --- |
-| White ALLU symbol | `D:\ProjetosPessoais\ERP\frontend\public\images\logo\allu-mark-white.png` (454 × 601) | Display on a navy brand surface; keep proportions and clear space. |
-| ALLU wordmarks | `D:\ProjetosPessoais\ERP\frontend\public\images\logo\allu-logo-dark.png`, `allu-logo.png` (1571 × 698) | Reference only; prefer native text alongside the symbol at phone scale. |
-| Brand palette | `D:\ProjetosPessoais\ERP\frontend\src\app\globals.css` | Brand 500 `#00006B`, 600 `#00005E`, 700 `#00004D`; tint 50 `#E9E9F5`, 100 `#D3D3EB`, 200 `#A8A8D6`. |
-| Neutral palette | Same `globals.css` | Ink `#101828`, canvas `#F9FAFB`, white `#FFFFFF`. |
-| Navigation and type | `D:\ProjetosPessoais\ERP\frontend\src\layout\AppSidebar.tsx` and `globals.css` | ERP sidebar navy `#0F172A`; Outfit is the ERP font, but use Android system sans until a redistributable font asset is supplied. |
+| wallet Manager icon | `D:\ProjetosPessoais\Logo\apps\wallet-icon.svg` | Adapted as the Android VectorDrawable `wallet_mark.xml`; retain the cream and gold strokes on a forest-green surface. |
+| wallet Manager wordmark | `D:\ProjetosPessoais\Logo\apps\wallet-logo.svg` | Reference for the product name, spacing, and palette; native text is used beside the symbol at phone scale. |
+| Brand palette | `D:\ProjetosPessoais\Logo\apps\wallet-logo.svg` | Forest `#166534`, cream `#FDF8E7`, gold `#F5C542`, pale green `#D6E6CF`. |
+| Typography | Android system sans | Native system sans keeps the package compact and legible on phones. |
 
 Do not import ERP customer data, business imagery, proprietary page layouts, or a web sidebar. Only the owner-authorized mark and visual tokens are used. Do not imply Pierre endorsement or a live financial connection.
 
 ## Direction
 
-An ALLU operations board adapted for one hand: crisp light canvas, deep-navy header, deliberate high-contrast numbers, rounded but compact cards, and small indigo accents. Money is the dominant visual signal; labels and provenance sit close to each value. Warnings use neutral, explainable language rather than alarmist fraud claims.
+A wallet Manager ledger adapted for one hand: cream canvas, forest-green header, deliberate high-contrast numbers, rounded but compact cards, and small gold accents. Money is the dominant visual signal; labels and provenance sit close to each value. Warnings use neutral, explainable language rather than alarmist fraud claims.
 
 The first phone viewport must show the demo disclosure, period, total balance, income/expense comparison, and at least one useful next action without overwhelming the user. Bottom navigation is native-sized and always identifies the current destination. The conversational screen is a local question-and-answer tool, not a fake messaging-app clone.
 
 ## Tokens and behavior
 
 - Spacing follows a 4dp grid; page gutters 20dp; card gaps 12dp; minimum touch target 48dp.
-- Surfaces: white cards on `#F9FAFB`; navy hero on `#00004D`; white-on-navy brand elements; primary actions `#00006B`.
+- Surfaces: warm white cards on `#FDF8E7`; forest hero on `#166534`; cream and gold brand elements; primary actions `#217A3B`.
 - Typography: system sans, tabular figures for money where available; primary balance large, transaction amounts medium, provenance compact but legible.
 - Radii: 14dp cards, 10dp controls, 8dp chips; elevation subtle and secondary to spacing/borders.
 - Semantic color must be paired with a text label and icon. No hue alone communicates overspending, duplicate suspicion, or dismissal.

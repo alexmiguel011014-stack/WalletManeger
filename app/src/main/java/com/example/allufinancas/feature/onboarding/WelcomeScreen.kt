@@ -29,20 +29,20 @@ internal fun Welcome(onExplore: () -> Unit, onPrivacy: () -> Unit) {
       Column {
         Spacer(Modifier.height(44.dp))
         Image(
-            painterResource(R.drawable.allu_mark_white),
-            "Símbolo ALLU",
+            painterResource(R.drawable.wallet_mark),
+            "Símbolo wallet Manager",
             Modifier.size(44.dp, 58.dp),
         )
         Spacer(Modifier.height(28.dp))
         Text(
-            "ALLU\nFinanças",
+            "wallet\nManager",
             color = Color.White,
             fontSize = 42.sp,
             lineHeight = 46.sp,
             fontWeight = FontWeight.Bold,
         )
         Spacer(Modifier.height(14.dp))
-        Text("Clareza para entender cada número.", color = AlluTint, fontSize = 18.sp)
+        Text("Clareza para acompanhar cada valor.", color = AlluTint, fontSize = 18.sp)
       }
       Column {
         Surface(color = Color.White.copy(alpha = .1f), shape = RoundedCornerShape(14.dp)) {
