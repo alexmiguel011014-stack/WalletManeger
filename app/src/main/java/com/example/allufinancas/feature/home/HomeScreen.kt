@@ -9,6 +9,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -19,7 +20,6 @@ import com.example.allufinancas.core.brl
 import com.example.allufinancas.data.*
 import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.navigation.*
-import java.time.Instant
 import java.time.YearMonth
 import kotlin.math.roundToInt
 
@@ -31,10 +31,22 @@ internal fun Home(
     alerts: List<Alert>,
     goals: List<Goal>,
     settings: DisplayPreferences,
-    materializedAt: Instant?,
+    pendingImportCount: Int,
+    importSourceEnabled: Boolean,
     navigate: (Page) -> Unit,
+    onAddTransaction: () -> Unit,
+    onOpenImports: () -> Unit,
     onOpenTransaction: (String) -> Unit,
 ) {
+  if (transactions.isEmpty() && budgets.isEmpty() && goals.isEmpty()) {
+    FirstSessionHome(
+        pendingImportCount = pendingImportCount,
+        importSourceEnabled = importSourceEnabled,
+        onAddTransaction = onAddTransaction,
+        onOpenImports = onOpenImports,
+    )
+    return
+  }
   val currentMonth = YearMonth.now().toString()
   val months = (transactions.map { it.date.take(7) } + currentMonth).distinct().sortedDescending()
   var savedMonth by rememberSaveable { mutableStateOf("") }
@@ -56,11 +68,8 @@ internal fun Home(
       verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
     item {
-      DemoStrip("Início · período $month", materializedAt)
-    }
-    item {
       GreetingHeader(
-          "Visão geral",
+          "Resumo do período",
           "Seu panorama",
           "Seus lançamentos e limites cadastrados neste dispositivo.",
       )
@@ -118,6 +127,18 @@ internal fun Home(
         }
       }
     }
+    if (importSourceEnabled || pendingImportCount > 0)
+        item {
+          OutlinedButton(
+              onClick = onOpenImports,
+              modifier = Modifier.fillMaxWidth().testTag("home-imports-shortcut"),
+          ) {
+            Text(
+                if (pendingImportCount > 0) "Revisar importações pendentes ($pendingImportCount)"
+                else "Importações pendentes"
+            )
+          }
+        }
     if (months.isNotEmpty())
         item {
           Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -280,6 +301,94 @@ internal fun Home(
                   (goal.savedCents.toFloat() / goal.targetCents.coerceAtLeast(1)).coerceIn(0f, 1f)
                 },
                 modifier = Modifier.fillMaxWidth(),
+            )
+          }
+        }
+  }
+}
+
+@Composable
+private fun FirstSessionHome(
+    pendingImportCount: Int,
+    importSourceEnabled: Boolean,
+    onAddTransaction: () -> Unit,
+    onOpenImports: () -> Unit,
+) {
+  LazyColumn(
+      Modifier.fillMaxSize(),
+      contentPadding =
+          androidx.compose.foundation.layout.PaddingValues(
+              horizontal = 20.dp,
+              vertical = 14.dp,
+          ),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    item {
+      Surface(
+          color = AlluNavy,
+          shape = RoundedCornerShape(18.dp),
+          modifier = Modifier.fillMaxWidth(),
+      ) {
+        Column(Modifier.padding(18.dp)) {
+          Row(verticalAlignment = Alignment.CenterVertically) {
+            Image(painterResource(R.drawable.wallet_mark), null, Modifier.size(22.dp, 30.dp))
+            Spacer(Modifier.width(10.dp))
+            Text(
+                "wallet Manager",
+                color = Color.White,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            )
+          }
+          Spacer(Modifier.height(14.dp))
+          Text("Saldo líquido dos lançamentos", color = AlluTint, fontSize = 13.sp)
+          Text("—", color = Color.White, fontSize = 32.sp, fontWeight = FontWeight.Bold)
+          Text("Ainda não há lançamentos salvos.", color = AlluTint, fontSize = 13.sp)
+        }
+      }
+    }
+    item {
+      Surface(
+          color = MaterialTheme.colorScheme.secondaryContainer,
+          shape = RoundedCornerShape(14.dp),
+          modifier = Modifier.fillMaxWidth().testTag("first-session-local-disclosure"),
+      ) {
+        Column(Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+          Text("Dados ficam neste dispositivo", fontWeight = FontWeight.SemiBold)
+          Text(
+              "Sem conta ou conexão bancária.",
+              color = MaterialTheme.colorScheme.onSecondaryContainer,
+              style = MaterialTheme.typography.bodySmall,
+          )
+        }
+      }
+    }
+    item {
+      Panel {
+        Text("Seus primeiros passos", fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(6.dp))
+        Text("1 · Primeiro lançamento", fontWeight = FontWeight.SemiBold)
+        Text("2 · Primeiro limite", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("3 · Avisos e Assistente", color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+    }
+    item {
+      Button(
+          onClick = onAddTransaction,
+          modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("home-first-entry"),
+      ) {
+        Text("Adicionar lançamento")
+      }
+    }
+    if (importSourceEnabled || pendingImportCount > 0)
+        item {
+          OutlinedButton(
+              onClick = onOpenImports,
+              modifier = Modifier.fillMaxWidth().testTag("home-imports-shortcut"),
+          ) {
+            Text(
+                if (pendingImportCount > 0) "Revisar importações pendentes ($pendingImportCount)"
+                else "Importações pendentes"
             )
           }
         }

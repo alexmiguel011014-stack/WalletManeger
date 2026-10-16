@@ -7,12 +7,20 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
@@ -51,13 +59,13 @@ import com.example.allufinancas.feature.transactions.TransactionsViewModel
 import com.example.allufinancas.feature.transactions.transactionById
 import java.time.Instant
 
-internal enum class Page(val label: String, val route: String, val icon: String) {
-  HOME("Início", "home", "⌂"),
-  TRANSACTIONS("Extrato", "transactions", "≡"),
-  BUDGETS("Planos", "budgets", "◎"),
-  ALERTS("Avisos", "alerts", "◇"),
-  ASSISTANT("Assistente", "assistant", "✦"),
-  SETTINGS("Ajustes", "settings", "⚙"),
+internal enum class Page(val label: String, val route: String, val icon: ImageVector) {
+  HOME("Início", "home", Icons.Filled.Home),
+  TRANSACTIONS("Extrato", "transactions", Icons.Filled.List),
+  BUDGETS("Planos", "budgets", Icons.Filled.DateRange),
+  ALERTS("Avisos", "alerts", Icons.Filled.Notifications),
+  ASSISTANT("Assistente", "assistant", Icons.Filled.Send),
+  SETTINGS("Ajustes", "settings", Icons.Filled.Settings),
 }
 
 private val tabs = listOf(Page.HOME, Page.TRANSACTIONS, Page.BUDGETS, Page.ALERTS, Page.ASSISTANT)
@@ -78,6 +86,7 @@ fun AlluApp(model: AlluViewModel? = null) {
   val factory = remember(stateModel) { AlluViewModelFactory(stateModel.dataSource) }
   val local = remember { context.getSharedPreferences("allu_welcome", Context.MODE_PRIVATE) }
   var entered by rememberSaveable { mutableStateOf(local.getBoolean("entered", false)) }
+  var firstEditorRequest by rememberSaveable { mutableIntStateOf(0) }
   var privacy by rememberSaveable { mutableStateOf(false) }
   val settings by stateModel.preferences.collectAsStateWithLifecycle()
   val materializedAt by
@@ -98,11 +107,24 @@ fun AlluApp(model: AlluViewModel? = null) {
           Welcome(
               onExplore = {
                 local.edit().putBoolean("entered", true).apply()
+                firstEditorRequest = 1
                 entered = true
               },
               onPrivacy = { privacy = true },
           )
-    } else AlluNavigation(stateModel, factory, materializedAt, notice) { stateModel.clearNotice() }
+    } else
+        AlluNavigation(
+            stateModel,
+            factory,
+            materializedAt,
+            notice,
+            initialEditorRequest = firstEditorRequest,
+            onEditorRequestHandled = { request ->
+              if (request == firstEditorRequest) firstEditorRequest = 0
+            },
+        ) {
+          stateModel.clearNotice()
+        }
   }
 }
 
@@ -113,9 +135,15 @@ private fun AlluNavigation(
     factory: AlluViewModelFactory,
     materializedAt: Instant?,
     notice: String?,
+    initialEditorRequest: Int,
+    onEditorRequestHandled: (Int) -> Unit,
     clearNotice: () -> Unit,
 ) {
   val navController = rememberNavController()
+  val startDestination = remember {
+    if (initialEditorRequest > 0) Page.TRANSACTIONS.route else Page.HOME.route
+  }
+  var editorRequest by rememberSaveable { mutableIntStateOf(initialEditorRequest) }
   val backStackEntry by navController.currentBackStackEntryAsState()
   val route = backStackEntry?.destination?.route
   var selectedTab by rememberSaveable { mutableStateOf(Page.HOME) }
@@ -141,7 +169,7 @@ private fun AlluNavigation(
 
   val title =
       when (route) {
-        Page.HOME.route -> "Visão geral"
+        Page.HOME.route -> Page.HOME.label
         Page.SETTINGS.route -> Page.SETTINGS.label
         PRIVACY_ROUTE -> "Privacidade e limitações"
         REVIEW_ROUTE -> "Revisão de lançamentos"
@@ -182,7 +210,7 @@ private fun AlluNavigation(
                         label = tab.label,
                         selected = selectedTab == tab,
                         onClick = { selectTab(tab) },
-                        icon = { Text(tab.icon, fontSize = 20.sp) },
+                        icon = { Icon(tab.icon, contentDescription = null) },
                     )
                   },
                   Modifier.testTag("bottom-navigation"),
@@ -196,14 +224,14 @@ private fun AlluNavigation(
                 NavigationRailItem(
                     selected = selectedTab == tab,
                     onClick = { selectTab(tab) },
-                    icon = { Text(tab.icon, fontSize = 20.sp) },
+                    icon = { Icon(tab.icon, contentDescription = null) },
                     label = { Text(tab.label) },
                     modifier = Modifier.semantics { contentDescription = tab.label },
                 )
               }
             }
         Box(Modifier.weight(1f).fillMaxHeight()) {
-          NavHost(navController, startDestination = Page.HOME.route, Modifier.fillMaxSize()) {
+          NavHost(navController, startDestination = startDestination, Modifier.fillMaxSize()) {
             composable(Page.HOME.route) {
               val screenModel: HomeViewModel = viewModel(factory = factory)
               val screen by screenModel.state.collectAsStateWithLifecycle()
@@ -215,8 +243,16 @@ private fun AlluNavigation(
                     data.alerts,
                     data.goals,
                     data.preferences,
-                    materializedAt,
+                    data.pendingImportCount,
+                    data.importSourceEnabled,
                     ::selectTab,
+                    onAddTransaction = {
+                      editorRequest += 1
+                      selectTab(Page.TRANSACTIONS)
+                    },
+                    onOpenImports = {
+                      navController.navigate(IMPORTS_ROUTE) { launchSingleTop = true }
+                    },
                     onOpenTransaction = { id ->
                       selectTab(Page.TRANSACTIONS)
                       navController.navigate(transactionDetailRoute(id))
@@ -234,6 +270,9 @@ private fun AlluNavigation(
                     data.preferences,
                     materializedAt,
                     data.pendingImportCount,
+                    data.importSourceEnabled,
+                    editorRequest,
+                    onEditorRequestHandled,
                     stateModel::saveTransaction,
                     onOpenImports = {
                       navController.navigate(IMPORTS_ROUTE) { launchSingleTop = true }
@@ -253,7 +292,6 @@ private fun AlluNavigation(
                     data.budgets,
                     data.goals,
                     data.preferences,
-                    materializedAt,
                     stateModel::updateBudget,
                 )
               }
@@ -262,9 +300,12 @@ private fun AlluNavigation(
               val screenModel: AlertsViewModel = viewModel(factory = factory)
               val screen by screenModel.state.collectAsStateWithLifecycle()
               ScreenContent(screen) {
-                Alerts(it.alerts, materializedAt, stateModel::setAlertDismissed) {
-                  navController.navigate(REVIEW_ROUTE)
-                }
+                Alerts(
+                    it.alerts,
+                    it.pendingReviewCount,
+                    stateModel::setAlertDismissed,
+                    onOpenReview = { navController.navigate(REVIEW_ROUTE) },
+                )
               }
             }
             composable(REVIEW_ROUTE) {
@@ -306,9 +347,13 @@ private fun AlluNavigation(
                 Assistant(
                     it.messages,
                     it.transactions,
+                    it.budgets,
                     it.categories,
-                    materializedAt,
                     stateModel::sendMessage,
+                    onAddTransaction = {
+                      editorRequest += 1
+                      selectTab(Page.TRANSACTIONS)
+                    },
                 )
               }
             }

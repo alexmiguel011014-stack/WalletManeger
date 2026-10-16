@@ -9,6 +9,7 @@ internal data class TransactionsUiData(
     val categories: List<Category>,
     val preferences: DisplayPreferences,
     val pendingImportCount: Int,
+    val importSourceEnabled: Boolean,
 )
 
 internal class TransactionsViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
@@ -18,12 +19,14 @@ internal class TransactionsViewModel(dataSource: DemoDataSource) : DataScreenVie
           dataSource.categories,
           dataSource.preferences,
           dataSource.importNotices,
-      ) { transactions, categories, settings, notices ->
+          dataSource.enabledImportSource,
+      ) { transactions, categories, settings, notices, source ->
         TransactionsUiData(
             transactions = transactions,
             categories = categories,
             preferences = settings,
             pendingImportCount = notices.count { it.status == ImportNoticeStatus.PENDING },
+            importSourceEnabled = source != null,
         )
       }
 

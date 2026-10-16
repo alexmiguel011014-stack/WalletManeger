@@ -48,21 +48,21 @@ internal fun Welcome(onExplore: () -> Unit, onPrivacy: () -> Unit) {
         Surface(color = Color.White.copy(alpha = .1f), shape = RoundedCornerShape(14.dp)) {
           Column(Modifier.padding(18.dp)) {
             Text(
-                "SEUS DADOS FICAM NO APARELHO",
+                "DADOS FICAM NESTE DISPOSITIVO",
                 color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                "Cadastre suas entradas, saídas e limites. Sem conta, conexão bancária ou envio de dados.",
+                "Sem conta ou conexão bancária. Comece registrando uma entrada ou saída.",
                 color = Color.White,
             )
           }
         }
         Spacer(Modifier.height(20.dp))
         Button(onClick = onExplore, modifier = Modifier.fillMaxWidth().height(54.dp)) {
-          Text("Começar a cadastrar")
+          Text("Adicionar lançamento")
         }
         TextButton(onClick = onPrivacy, modifier = Modifier.fillMaxWidth()) {
           Text("Privacidade e dados locais", color = Color.White)

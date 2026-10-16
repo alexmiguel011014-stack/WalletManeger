@@ -8,48 +8,49 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.example.allufinancas.data.*
 import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.navigation.*
-import java.time.Instant
-import java.time.YearMonth
 
 @Composable
 internal fun Alerts(
     alerts: List<Alert>,
-    materializedAt: Instant?,
+    pendingReviewCount: Int,
     onDismiss: (String, Boolean) -> Unit,
     onOpenReview: () -> Unit,
 ) {
   var showDismissed by rememberSaveable { mutableStateOf(false) }
-  val month = YearMonth.now().toString()
   val visible = alerts.filter { it.dismissed == showDismissed }
   LazyColumn(
       Modifier.fillMaxSize(),
       contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
       verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
-    item { DemoStrip("Avisos · regras locais · período $month", materializedAt) }
-    item {
-      Panel {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-          Text("Caixa de revisão", fontWeight = FontWeight.Bold)
-          Text(
-              "Confira categorias ausentes, possíveis repetições e valores acima do padrão dos seus lançamentos.",
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-          TextButton(onClick = onOpenReview) { Text("Revisar lançamentos") }
+    if (pendingReviewCount > 0)
+        item {
+          Box(Modifier.testTag("alerts-review-shortcut")) {
+            Panel {
+              Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text("Caixa de revisão · $pendingReviewCount", fontWeight = FontWeight.Bold)
+                Text(
+                    "Confira categorias ausentes, possíveis repetições e valores acima do padrão dos seus lançamentos.",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                TextButton(onClick = onOpenReview) { Text("Revisar lançamentos") }
+              }
+            }
+          }
         }
-      }
-    }
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedButton(onClick = { showDismissed = false }) { Text("Ativos") }
-        OutlinedButton(onClick = { showDismissed = true }) { Text("Arquivados") }
-      }
-    }
+    if (alerts.isNotEmpty())
+        item {
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = { showDismissed = false }) { Text("Ativos") }
+            OutlinedButton(onClick = { showDismissed = true }) { Text("Arquivados") }
+          }
+        }
     if (visible.isEmpty())
         item {
           EmptyState(
@@ -63,7 +64,7 @@ internal fun Alerts(
                   when {
                     showDismissed -> "Os avisos arquivados por você aparecerão aqui."
                     alerts.isEmpty() ->
-                        "Cadastre lançamentos para que as regras locais possam procurar padrões. A ausência de avisos não garante ausência de risco."
+                        "Avisos aparecem quando regras locais encontram padrões nos lançamentos salvos. A ausência de avisos não garante ausência de risco."
                     else ->
                         "Todos os avisos atuais foram arquivados. A ausência de avisos ativos não é uma avaliação de risco zero."
                   },

@@ -8,31 +8,45 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.example.allufinancas.core.brl
 import com.example.allufinancas.data.*
 import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.navigation.*
-import java.time.Instant
 import java.time.YearMonth
 
 @Composable
 internal fun Assistant(
     messages: List<AssistantMessage>,
     transactions: List<Transaction>,
+    budgets: List<Budget>,
     categories: List<Category>,
-    materializedAt: Instant?,
     onSend: (String) -> Unit,
+    onAddTransaction: () -> Unit,
 ) {
   var text by rememberSaveable { mutableStateOf("") }
   var sourceMessageId by rememberSaveable { mutableStateOf<Long?>(null) }
   val transactionsById = remember(transactions) { transactions.associateBy(Transaction::id) }
   val categoriesById = remember(categories) { categories.associateBy(Category::id) }
   val month = YearMonth.now().toString()
+  val monthTransactions = transactions.filter { it.date.startsWith(month) }
+  val monthExpenses = monthTransactions.filter { it.amountCents < 0 }
+  val suggestions = buildList {
+    if (monthTransactions.isNotEmpty()) add("Quanto gastei no mês?")
+    if (monthExpenses.isNotEmpty()) add("Maior despesa")
+    if (monthExpenses.any { it.recurring }) add("Assinaturas recorrentes")
+    budgets
+        .firstNotNullOfOrNull { budget ->
+          categoriesById[budget.categoryId]?.let { category ->
+            "Quanto resta do limite de ${category.name}?"
+          }
+        }
+        ?.let(::add)
+  }
+  val canAskWithLocalData = transactions.isNotEmpty() || budgets.isNotEmpty()
   Column(Modifier.fillMaxSize().padding(20.dp)) {
-    DemoStrip("Assistente local · período $month", materializedAt)
-    Spacer(Modifier.height(12.dp))
     Text(
         "Pergunte sobre seus lançamentos",
         style = MaterialTheme.typography.titleLarge,
@@ -44,12 +58,15 @@ internal fun Assistant(
         fontSize = 12.sp,
     )
     Spacer(Modifier.height(12.dp))
-    androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-      items(listOf("Quanto gastei no mês?", "Maior despesa", "Assinaturas recorrentes")) {
-          suggestion ->
-        OutlinedButton(onClick = { onSend(suggestion) }) { Text(suggestion) }
-      }
-    }
+    if (suggestions.isNotEmpty())
+        androidx.compose.foundation.lazy.LazyRow(
+            modifier = Modifier.testTag("assistant-suggestions"),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+          items(suggestions) { suggestion ->
+            OutlinedButton(onClick = { onSend(suggestion) }) { Text(suggestion) }
+          }
+        }
     LazyColumn(
         Modifier.weight(1f).fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -58,12 +75,16 @@ internal fun Assistant(
       if (messages.isEmpty())
           item {
             EmptyState(
-                title = "Comece uma conversa",
+                title =
+                    if (canAskWithLocalData) "Comece uma conversa"
+                    else "Ainda não há dados para responder",
                 message =
-                    if (transactions.isEmpty())
-                        "Cadastre sua primeira entrada ou saída no extrato. Depois, pergunte sobre seus gastos e limites."
+                    if (canAskWithLocalData)
+                        "As respostas usam somente dados salvos neste dispositivo."
                     else
-                        "Escolha uma sugestão ou escreva uma pergunta. As respostas usam somente dados salvos neste dispositivo.",
+                        "Cadastre uma entrada ou saída para consultar seus gastos e limites locais.",
+                actionLabel = if (canAskWithLocalData) null else "Adicionar lançamento",
+                onAction = onAddTransaction,
             )
           }
       items(messages, key = { it.id }) { message ->
@@ -106,30 +127,39 @@ internal fun Assistant(
         }
       }
     }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-      OutlinedTextField(
-          value = text,
-          onValueChange = { text = it },
-          label = { Text("Sua pergunta") },
-          supportingText = {
-            Text(if (text.length > 500) "Limite: 500 caracteres" else "${text.length}/500")
-          },
-          isError = text.length > 500,
-          modifier = Modifier.weight(1f),
-          maxLines = 3,
+    if (canAskWithLocalData)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          OutlinedTextField(
+              value = text,
+              onValueChange = { text = it },
+              label = { Text("Sua pergunta") },
+              supportingText = {
+                Text(if (text.length > 500) "Limite: 500 caracteres" else "${text.length}/500")
+              },
+              isError = text.length > 500,
+              modifier = Modifier.weight(1f).testTag("assistant-question"),
+              maxLines = 3,
+          )
+          Spacer(Modifier.width(8.dp))
+          Button(
+              enabled = text.isNotBlank() && text.length <= 500,
+              onClick = {
+                if (text.isNotBlank() && text.length <= 500) {
+                  onSend(text.trim())
+                  text = ""
+                }
+              },
+          ) {
+            Text("Enviar")
+          }
+        }
+    else {
+      Spacer(Modifier.height(8.dp))
+      Text(
+          "Sem dados salvos, não há perguntas para responder.",
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          style = MaterialTheme.typography.bodySmall,
       )
-      Spacer(Modifier.width(8.dp))
-      Button(
-          enabled = text.isNotBlank() && text.length <= 500,
-          onClick = {
-            if (text.isNotBlank() && text.length <= 500) {
-              onSend(text.trim())
-              text = ""
-            }
-          },
-      ) {
-        Text("Enviar")
-      }
     }
   }
   val selectedMessage = messages.firstOrNull { it.id == sourceMessageId }

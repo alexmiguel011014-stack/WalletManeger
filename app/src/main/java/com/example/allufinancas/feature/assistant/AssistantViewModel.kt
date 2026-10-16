@@ -1,6 +1,7 @@
 package com.example.allufinancas.feature.assistant
 
 import com.example.allufinancas.data.AssistantMessage
+import com.example.allufinancas.data.Budget
 import com.example.allufinancas.data.Category
 import com.example.allufinancas.data.DemoDataSource
 import com.example.allufinancas.data.Transaction
@@ -11,6 +12,7 @@ internal data class AssistantUiData(
     val messages: List<AssistantMessage>,
     val transactions: List<Transaction>,
     val categories: List<Category>,
+    val budgets: List<Budget>,
 )
 
 internal class AssistantViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
@@ -20,8 +22,10 @@ internal class AssistantViewModel(dataSource: DemoDataSource) : DataScreenViewMo
               dataSource.messages,
               dataSource.transactions,
               dataSource.categories,
-              ::AssistantUiData,
-          ),
+              dataSource.budgets,
+          ) { messages, transactions, categories, budgets ->
+            AssistantUiData(messages, transactions, categories, budgets)
+          },
       ) {
         it.messages.isEmpty()
       }

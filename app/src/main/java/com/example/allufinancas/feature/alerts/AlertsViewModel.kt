@@ -4,9 +4,8 @@ import com.example.allufinancas.data.*
 import com.example.allufinancas.data.DemoDataSource
 import com.example.allufinancas.navigation.DataScreenViewModel
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 
-internal data class AlertsUiData(val alerts: List<Alert>)
+internal data class AlertsUiData(val alerts: List<Alert>, val pendingReviewCount: Int)
 
 internal data class ReviewUiData(
     val cases: List<ReconciliationCase>,
@@ -15,7 +14,14 @@ internal data class ReviewUiData(
 )
 
 internal class AlertsViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
-  internal val state = stateFor(dataSource.alerts.map(::AlertsUiData)) { it.alerts.isEmpty() }
+  internal val state =
+      stateFor(
+          combine(dataSource.alerts, dataSource.reconciliationCases) { alerts, cases ->
+            AlertsUiData(alerts, cases.count { !it.decided })
+          }
+      ) {
+        it.alerts.isEmpty() && it.pendingReviewCount == 0
+      }
   internal val reviewState =
       stateFor(
           combine(

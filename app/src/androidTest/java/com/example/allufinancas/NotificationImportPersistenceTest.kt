@@ -20,6 +20,7 @@ import java.time.LocalDate
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -185,6 +186,114 @@ class NotificationImportPersistenceTest {
         assertTrue(repository.importNotices.first().isEmpty())
         assertNull(repository.enabledImportSource.first())
       }
+
+  @Test
+  fun simultaneousConfirmationOfOneDraftCreatesOnlyOneLedgerRow() = runBlocking {
+    val context = InstrumentationRegistry.getInstrumentation().targetContext
+    val repository = DemoRepository(context)
+    withTimeout(15_000) { repository.ready.first { it } }
+    repository.resetDemoData()
+    try {
+      repository.enableImportSource(NotificationImportSource.RICO)
+      val date = LocalDate.now().toString()
+      val capture = NotificationImportCapture(context)
+      assertTrue(capture.capture(candidate("simultaneous-confirmation", "qualquer", -889, date)))
+      val draft = repository.importNotices.first().single()
+      val confirmation =
+          ImportNoticeConfirmation(
+              merchant = "Padaria de Seu Zé",
+              description = "Compra revisada",
+              amountCents = -889,
+              date = date,
+              categoryId = "alimentacao",
+          )
+      val start = CompletableDeferred<Unit>()
+      val confirmations =
+          List(2) {
+            async(start = CoroutineStart.UNDISPATCHED) {
+              start.await()
+              repository.confirmImportNotice(draft.id, confirmation)
+            }
+          }
+
+      start.complete(Unit)
+      val transactionIds = confirmations.awaitAll()
+      val imported =
+          repository.transactions.first().filter {
+            it.origin == TransactionOrigin.NOTIFICATION_IMPORT
+          }
+
+      assertTrue(transactionIds.all { it != null })
+      assertEquals(transactionIds.first(), transactionIds.last())
+      assertEquals(1, imported.size)
+      assertEquals(transactionIds.first(), imported.single().id)
+      assertEquals(draft.id, imported.single().importNoticeId)
+    } finally {
+      repository.resetDemoData()
+    }
+  }
+
+  @Test
+  fun distinctIdenticalPurchasesCanBothBeConfirmedAfterDuplicateAcknowledgement() = runBlocking {
+    val context = InstrumentationRegistry.getInstrumentation().targetContext
+    val repository = DemoRepository(context)
+    withTimeout(15_000) { repository.ready.first { it } }
+    repository.resetDemoData()
+    try {
+      repository.enableImportSource(NotificationImportSource.RICO)
+      val date = LocalDate.now().toString()
+      val firstCandidate = candidate("identical-purchase-1", "qualquer", -889, date)
+      val secondCandidate = candidate("identical-purchase-2", "qualquer", -889, date)
+      val capture = NotificationImportCapture(context)
+      assertTrue(capture.capture(firstCandidate))
+      assertTrue(capture.capture(secondCandidate))
+      val drafts = repository.importNotices.first().associateBy { it.sourceEventHash }
+      val firstDraft = drafts.getValue(firstCandidate.sourceEventHash)
+      val secondDraft = drafts.getValue(secondCandidate.sourceEventHash)
+      assertFalse(firstDraft.possibleDuplicate)
+      assertTrue(secondDraft.possibleDuplicate)
+
+      val confirmation =
+          ImportNoticeConfirmation(
+              merchant = "Padaria de Seu Zé",
+              description = "Compra revisada",
+              amountCents = -889,
+              date = date,
+              categoryId = "alimentacao",
+          )
+      val firstId = repository.confirmImportNotice(firstDraft.id, confirmation)
+      assertTrue(firstId != null)
+      assertNull(repository.confirmImportNotice(secondDraft.id, confirmation))
+      val secondId =
+          repository.confirmImportNotice(
+              secondDraft.id,
+              confirmation.copy(acceptPossibleDuplicate = true),
+          )
+      assertTrue(secondId != null)
+      assertFalse(firstId == secondId)
+
+      val imported =
+          repository.transactions.first().filter {
+            it.origin == TransactionOrigin.NOTIFICATION_IMPORT
+          }
+      assertEquals(2, imported.size)
+      assertEquals(setOf(firstId, secondId), imported.map { it.id }.toSet())
+      assertEquals(
+          setOf(firstDraft.id, secondDraft.id),
+          imported.mapNotNull { it.importNoticeId }.toSet(),
+      )
+      assertEquals(firstId, repository.confirmImportNotice(firstDraft.id, confirmation))
+      assertEquals(secondId, repository.confirmImportNotice(secondDraft.id, confirmation))
+      assertEquals(
+          2,
+          repository.transactions.first().count {
+            it.origin == TransactionOrigin.NOTIFICATION_IMPORT
+          },
+      )
+    } finally {
+      repository.resetDemoData()
+    }
+  }
 
   @Test
   fun suffixMismatchAndWrongExpenseSignCannotReachTheLedger() = runBlocking {

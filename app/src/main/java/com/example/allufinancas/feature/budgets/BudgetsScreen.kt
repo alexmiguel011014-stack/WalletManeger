@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -20,7 +21,6 @@ import com.example.allufinancas.data.*
 import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.navigation.*
 import java.math.BigDecimal
-import java.time.Instant
 import java.time.YearMonth
 
 internal object BudgetAmount {
@@ -45,7 +45,6 @@ internal fun Budgets(
     budgets: List<Budget>,
     goals: List<Goal>,
     settings: DisplayPreferences,
-    materializedAt: Instant?,
     onUpdate: (String, Long) -> Unit,
 ) {
   var editingCategoryId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -64,7 +63,6 @@ internal fun Budgets(
       contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
       verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
-    item { DemoStrip("Limites por categoria · $month", materializedAt) }
     item {
       Text(
           "Defina limites para seus gastos registrados.",
@@ -72,40 +70,44 @@ internal fun Budgets(
           fontWeight = FontWeight.Bold,
       )
     }
-    item {
-      Button(
-          onClick = { chooseCategory = true },
-          enabled = availableCategories.isNotEmpty(),
-          modifier = Modifier.fillMaxWidth(),
-      ) {
-        Text("Adicionar limite")
-      }
-    }
-    item {
-      BudgetScenarioPanel(
-          transactions = transactions,
-          categories = categories,
-          budgets = budgets,
-          showCents = settings.showCents,
-          month = month,
-          selectedCategoryId = scenarioCategoryId,
-          amount = scenarioAmount,
-          onCategorySelected = {
-            scenarioCategoryId = it
-            scenarioAmount = ""
-          },
-          onAmountChange = { scenarioAmount = it },
-          onClear = {
-            scenarioCategoryId = null
-            scenarioAmount = ""
-          },
-      )
-    }
+    if (availableCategories.isNotEmpty())
+        item {
+          Button(
+              onClick = { chooseCategory = true },
+              modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("budget-add"),
+          ) {
+            Text("Adicionar limite")
+          }
+        }
+    else if (budgets.isNotEmpty()) item { Text("Todas as categorias de despesa já têm limite.") }
+    if (budgets.isNotEmpty())
+        item {
+          Box(Modifier.testTag("budget-scenario")) {
+            BudgetScenarioPanel(
+                transactions = transactions,
+                categories = categories,
+                budgets = budgets,
+                showCents = settings.showCents,
+                month = month,
+                selectedCategoryId = scenarioCategoryId,
+                amount = scenarioAmount,
+                onCategorySelected = {
+                  scenarioCategoryId = it
+                  scenarioAmount = ""
+                },
+                onAmountChange = { scenarioAmount = it },
+                onClear = {
+                  scenarioCategoryId = null
+                  scenarioAmount = ""
+                },
+            )
+          }
+        }
     if (budgets.isEmpty())
         item {
           EmptyState(
               "Nenhum limite cadastrado",
-              "Escolha uma categoria para começar a acompanhar seus gastos.",
+              "Adicione um limite por categoria para comparar com os gastos que você salvar.",
           )
         }
     items(budgets) { budget ->

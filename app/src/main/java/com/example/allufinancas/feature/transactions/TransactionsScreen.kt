@@ -4,13 +4,19 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
 import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.*
 import com.example.allufinancas.core.brl
@@ -19,6 +25,9 @@ import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.feature.budgets.BudgetAmount
 import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.UUID
 
 @Composable
@@ -28,6 +37,9 @@ internal fun Transactions(
     settings: DisplayPreferences,
     materializedAt: Instant?,
     pendingImportCount: Int,
+    importSourceEnabled: Boolean,
+    editorRequest: Int,
+    onEditorRequestHandled: (Int) -> Unit,
     onSave: (Transaction) -> Unit,
     onOpenImports: () -> Unit,
     onTransactionClick: (String) -> Unit,
@@ -38,6 +50,14 @@ internal fun Transactions(
   var month by rememberSaveable { mutableStateOf("") }
   var fromDate by rememberSaveable { mutableStateOf("") }
   var throughDate by rememberSaveable { mutableStateOf("") }
+  var handledEditorRequest by rememberSaveable { mutableIntStateOf(0) }
+  LaunchedEffect(editorRequest) {
+    if (editorRequest > handledEditorRequest) {
+      adding = true
+      handledEditorRequest = editorRequest
+      onEditorRequestHandled(editorRequest)
+    }
+  }
   val months = transactions.map { it.date.take(7) }.distinct().sortedDescending()
   val filter = TransactionFilter(search, category, month, fromDate, throughDate)
   val filtered = filter.apply(transactions)
@@ -84,96 +104,110 @@ internal fun Transactions(
       contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    item { DemoStrip(scope, materializedAt) }
+    if (transactions.isNotEmpty()) item { DemoStrip(scope, materializedAt) }
     item {
-      Button(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) {
+      Button(
+          onClick = { adding = true },
+          modifier = Modifier.fillMaxWidth().testTag("transactions-add"),
+      ) {
         Text("Adicionar lançamento")
       }
     }
-    item {
-      OutlinedButton(onClick = onOpenImports, modifier = Modifier.fillMaxWidth()) {
-        Text("Importações pendentes${if (pendingImportCount > 0) " ($pendingImportCount)" else ""}")
-      }
-    }
-    item {
-      OutlinedTextField(
-          search,
-          { search = it },
-          label = { Text("Buscar estabelecimento") },
-          modifier = Modifier.fillMaxWidth(),
-          singleLine = true,
-      )
-    }
-    item {
-      androidx.compose.foundation.lazy.LazyRow(
-          modifier = Modifier.testTag("transaction-categories"),
-          horizontalArrangement = Arrangement.spacedBy(6.dp),
-      ) {
-        item { OutlinedButton(onClick = { category = "" }) { Text("Todas") } }
-        items(categories) { item ->
-          OutlinedButton(onClick = { category = item.id }) { Text(item.name) }
-        }
-      }
-    }
-    item {
-      androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    if (pendingImportCount > 0 || importSourceEnabled)
         item {
           OutlinedButton(
-              onClick = {
+              onClick = onOpenImports,
+              modifier = Modifier.fillMaxWidth().testTag("transactions-imports-shortcut"),
+          ) {
+            Text(
+                if (pendingImportCount > 0) "Importações pendentes ($pendingImportCount)"
+                else "Importações pendentes"
+            )
+          }
+        }
+    if (transactions.isNotEmpty()) {
+      item {
+        OutlinedTextField(
+            search,
+            { search = it },
+            label = { Text("Buscar estabelecimento") },
+            modifier = Modifier.fillMaxWidth().testTag("transaction-search"),
+            singleLine = true,
+        )
+      }
+      item {
+        androidx.compose.foundation.lazy.LazyRow(
+            modifier = Modifier.testTag("transaction-categories"),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+          item { OutlinedButton(onClick = { category = "" }) { Text("Todas") } }
+          items(categories) { item ->
+            OutlinedButton(onClick = { category = item.id }) { Text(item.name) }
+          }
+        }
+      }
+      item {
+        androidx.compose.foundation.lazy.LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+          item {
+            OutlinedButton(
+                onClick = {
+                  month = ""
+                  fromDate = ""
+                  throughDate = ""
+                }
+            ) {
+              Text("Todo período")
+            }
+          }
+          items(months) { item ->
+            OutlinedButton(
+                onClick = {
+                  month = item
+                  fromDate = ""
+                  throughDate = ""
+                }
+            ) {
+              Text(item)
+            }
+          }
+        }
+      }
+      item {
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          OutlinedTextField(
+              fromDate,
+              {
+                fromDate = it
                 month = ""
-                fromDate = ""
-                throughDate = ""
-              }
-          ) {
-            Text("Todo período")
-          }
+              },
+              label = { Text("De · dd/MM/aaaa") },
+              modifier = Modifier.weight(1f),
+              singleLine = true,
+          )
+          OutlinedTextField(
+              throughDate,
+              {
+                throughDate = it
+                month = ""
+              },
+              label = { Text("Até · dd/MM/aaaa") },
+              modifier = Modifier.weight(1f),
+              singleLine = true,
+          )
         }
-        items(months) { item ->
-          OutlinedButton(
-              onClick = {
-                month = item
-                fromDate = ""
-                throughDate = ""
-              }
-          ) {
-            Text(item)
-          }
+        TextButton(
+            onClick = {
+              search = ""
+              category = ""
+              month = ""
+              fromDate = ""
+              throughDate = ""
+            }
+        ) {
+          Text("Limpar filtros")
         }
-      }
-    }
-    item {
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        OutlinedTextField(
-            fromDate,
-            {
-              fromDate = it
-              month = ""
-            },
-            label = { Text("De · dd/MM/aaaa") },
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-        )
-        OutlinedTextField(
-            throughDate,
-            {
-              throughDate = it
-              month = ""
-            },
-            label = { Text("Até · dd/MM/aaaa") },
-            modifier = Modifier.weight(1f),
-            singleLine = true,
-        )
-      }
-      TextButton(
-          onClick = {
-            search = ""
-            category = ""
-            month = ""
-            fromDate = ""
-            throughDate = ""
-          }
-      ) {
-        Text("Limpar filtros")
       }
     }
     if (transactions.isEmpty())
@@ -181,8 +215,6 @@ internal fun Transactions(
           EmptyState(
               "Comece seu extrato",
               "Cadastre uma entrada ou saída para acompanhar seu saldo e seus gastos.",
-              actionLabel = "Adicionar lançamento",
-              onAction = { adding = true },
           )
         }
     else if (filtered.isEmpty())
@@ -307,6 +339,13 @@ internal fun TransactionDetail(
   )
 }
 
+private val brazilianDateFormat =
+    DateTimeFormatter.ofPattern("dd/MM/uuuu", Locale.forLanguageTag("pt-BR"))
+
+private fun formatBrazilianDate(storedDate: String): String =
+    runCatching { LocalDate.parse(storedDate).format(brazilianDateFormat) }.getOrDefault("")
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun TransactionEditor(
     transaction: Transaction?,
@@ -353,9 +392,37 @@ private fun TransactionEditor(
       rememberSaveable(id) { mutableStateOf(transaction?.installmentNumber?.toString().orEmpty()) }
   var installmentCount by
       rememberSaveable(id) { mutableStateOf(transaction?.installmentCount?.toString().orEmpty()) }
+  var detailsExpanded by
+      rememberSaveable(id) {
+        mutableStateOf(
+            transaction?.recurring == true ||
+                transaction?.installmentNumber != null ||
+                transaction?.installmentCount != null ||
+                transaction?.description?.isNotBlank() == true
+        )
+      }
+  var attemptedSave by rememberSaveable(id) { mutableStateOf(false) }
+  var amountTouched by rememberSaveable(id) { mutableStateOf(false) }
+  var amountFocused by rememberSaveable(id) { mutableStateOf(false) }
+  var merchantTouched by rememberSaveable(id) { mutableStateOf(false) }
+  var merchantFocused by rememberSaveable(id) { mutableStateOf(false) }
+  var descriptionTouched by rememberSaveable(id) { mutableStateOf(false) }
+  var detailsFocused by rememberSaveable(id) { mutableStateOf(false) }
+  var dateTouched by rememberSaveable(id) { mutableStateOf(false) }
   var categoryMenu by remember { mutableStateOf(false) }
+  var datePickerVisible by remember { mutableStateOf(false) }
+  val amountFocusRequester = remember { FocusRequester() }
+  val merchantFocusRequester = remember { FocusRequester() }
+  val keyboardController = LocalSoftwareKeyboardController.current
+
+  LaunchedEffect(id) {
+    withFrameNanos {}
+    runCatching { amountFocusRequester.requestFocus() }
+  }
+
   val cents = BudgetAmount.parseCents(amount)
-  val validDate = runCatching { LocalDate.parse(date).toString() == date }.getOrDefault(false)
+  val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
+  val validDate = parsedDate != null
   val validMerchant = merchant.trim().isNotEmpty() && merchant.trim().length <= 120
   val validDescription = description.trim().length <= 300
   val parsedInstallmentNumber = installmentNumber.toIntOrNull()
@@ -377,13 +444,59 @@ private fun TransactionEditor(
           validInstallments
 
   AlertDialog(
+      modifier = Modifier.testTag("transaction-editor"),
       onDismissRequest = onDismiss,
       title = { Text(if (transaction == null) "Novo lançamento" else "Editar lançamento") },
       text = {
         Column(
-            Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
+            Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()).imePadding(),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
+          OutlinedTextField(
+              value = amount,
+              onValueChange = { amount = it },
+              label = { Text("Valor em reais") },
+              modifier =
+                  Modifier.fillMaxWidth()
+                      .focusRequester(amountFocusRequester)
+                      .onFocusChanged {
+                        if (it.isFocused) amountFocused = true
+                        else if (amountFocused) amountTouched = true
+                      }
+                      .testTag("transaction-editor-amount"),
+              singleLine = true,
+              isError = (amountTouched || attemptedSave) && cents == null,
+              keyboardOptions =
+                  KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next),
+              keyboardActions = KeyboardActions(onNext = { merchantFocusRequester.requestFocus() }),
+          )
+          if ((amountTouched || attemptedSave) && cents == null)
+              Text(
+                  "Informe um valor positivo válido, por exemplo 125,50.",
+                  color = MaterialTheme.colorScheme.error,
+              )
+          OutlinedTextField(
+              value = merchant,
+              onValueChange = { merchant = it },
+              label = { Text("Estabelecimento") },
+              modifier =
+                  Modifier.fillMaxWidth()
+                      .focusRequester(merchantFocusRequester)
+                      .onFocusChanged {
+                        if (it.isFocused) merchantFocused = true
+                        else if (merchantFocused) merchantTouched = true
+                      }
+                      .testTag("transaction-editor-merchant"),
+              singleLine = true,
+              isError = (merchantTouched || attemptedSave) && !validMerchant,
+              keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+              keyboardActions = KeyboardActions(onDone = { keyboardController?.hide() }),
+          )
+          if ((merchantTouched || attemptedSave) && !validMerchant)
+              Text(
+                  "Informe um estabelecimento com até 120 caracteres.",
+                  color = MaterialTheme.colorScheme.error,
+              )
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
                 selected = income,
@@ -391,46 +504,30 @@ private fun TransactionEditor(
                   income = true
                   incomeCategoryId?.let { categoryId = it }
                   recurring = false
+                  keyboardController?.hide()
                 },
                 label = { Text("Entrada") },
+                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
             FilterChip(
                 selected = !income,
                 onClick = {
                   income = false
                   categoryId = expenseCategoryId
+                  keyboardController?.hide()
                 },
                 label = { Text("Saída") },
+                modifier = Modifier.defaultMinSize(minHeight = 48.dp),
             )
           }
-          OutlinedTextField(
-              amount,
-              { amount = it },
-              label = { Text("Valor em reais") },
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-          )
-          OutlinedTextField(
-              merchant,
-              { merchant = it },
-              label = { Text("Estabelecimento") },
-              singleLine = true,
-          )
-          OutlinedTextField(
-              description,
-              { description = it },
-              label = { Text("Descrição (opcional)") },
-              singleLine = true,
-          )
-          OutlinedTextField(
-              date,
-              { date = it },
-              label = { Text("Data · AAAA-MM-DD") },
-              singleLine = true,
-              isError = date.isNotBlank() && !validDate,
-          )
           Box {
-            OutlinedButton(onClick = { categoryMenu = true }, modifier = Modifier.fillMaxWidth()) {
+            OutlinedButton(
+                onClick = {
+                  categoryMenu = true
+                  keyboardController?.hide()
+                },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+            ) {
               Text(categories.firstOrNull { it.id == categoryId }?.name ?: "Escolher categoria")
             }
             DropdownMenu(expanded = categoryMenu, onDismissRequest = { categoryMenu = false }) {
@@ -445,74 +542,117 @@ private fun TransactionEditor(
               }
             }
           }
-          if (!income) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-              Checkbox(checked = recurring, onCheckedChange = { recurring = it })
-              Text("Marcar como despesa recorrente")
-            }
+          if (attemptedSave && categoryId !in categoryOptions.map { it.id })
+              Text(
+                  "Escolha uma categoria compatível com o tipo.",
+                  color = MaterialTheme.colorScheme.error,
+              )
+          OutlinedTextField(
+              value = formatBrazilianDate(date),
+              onValueChange = {},
+              label = { Text("Data · dd/MM/aaaa") },
+              modifier =
+                  Modifier.fillMaxWidth()
+                      .clickable {
+                        keyboardController?.hide()
+                        datePickerVisible = true
+                      }
+                      .testTag("transaction-editor-date"),
+              readOnly = true,
+              singleLine = true,
+              isError = (dateTouched || attemptedSave) && !validDate,
+          )
+          if ((dateTouched || attemptedSave) && !validDate)
+              Text("Escolha uma data válida.", color = MaterialTheme.colorScheme.error)
+
+          TextButton(
+              onClick = {
+                detailsExpanded = !detailsExpanded
+                keyboardController?.hide()
+              },
+              modifier =
+                  Modifier.fillMaxWidth()
+                      .heightIn(min = 48.dp)
+                      .testTag("transaction-editor-advanced"),
+          ) {
+            Text(if (detailsExpanded) "Menos detalhes" else "Mais detalhes")
           }
-          OutlinedTextField(
-              installmentNumber,
-              { installmentNumber = it.filter(Char::isDigit).take(3) },
-              label = { Text("Parcela atual (opcional)") },
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-          )
-          OutlinedTextField(
-              installmentCount,
-              { installmentCount = it.filter(Char::isDigit).take(3) },
-              label = { Text("Total de parcelas (opcional)") },
-              singleLine = true,
-              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-          )
-          if (cents == null)
-              Text(
-                  "Informe um valor positivo válido, por exemplo 125,50.",
-                  color = MaterialTheme.colorScheme.error,
-              )
-          if (!validMerchant)
-              Text(
-                  "Informe um estabelecimento com até 120 caracteres.",
-                  color = MaterialTheme.colorScheme.error,
-              )
-          if (!validDate)
-              Text(
-                  "Informe uma data existente no formato AAAA-MM-DD.",
-                  color = MaterialTheme.colorScheme.error,
-              )
-          if (!validDescription)
-              Text(
-                  "A descrição aceita até 300 caracteres.",
-                  color = MaterialTheme.colorScheme.error,
-              )
-          if (!validInstallments)
-              Text(
-                  "Informe a parcela atual e o total: 1 ≤ atual ≤ total ≤ 120.",
-                  color = MaterialTheme.colorScheme.error,
-              )
+          if (detailsExpanded) {
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                label = { Text("Descrição (opcional)") },
+                modifier =
+                    Modifier.fillMaxWidth().onFocusChanged {
+                      if (it.isFocused) detailsFocused = true
+                      else if (detailsFocused) descriptionTouched = true
+                    },
+                singleLine = true,
+                isError = (descriptionTouched || attemptedSave) && !validDescription,
+            )
+            if ((descriptionTouched || attemptedSave) && !validDescription)
+                Text(
+                    "A descrição aceita até 300 caracteres.",
+                    color = MaterialTheme.colorScheme.error,
+                )
+            if (!income) {
+              Row(
+                  Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Checkbox(checked = recurring, onCheckedChange = { recurring = it })
+                Text("Marcar como despesa recorrente")
+              }
+            }
+            OutlinedTextField(
+                value = installmentNumber,
+                onValueChange = { installmentNumber = it.filter(Char::isDigit).take(3) },
+                label = { Text("Parcela atual (opcional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            OutlinedTextField(
+                value = installmentCount,
+                onValueChange = { installmentCount = it.filter(Char::isDigit).take(3) },
+                label = { Text("Total de parcelas (opcional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            )
+            if ((detailsFocused || attemptedSave) && !validInstallments)
+                Text(
+                    "Informe parcela atual e total válidos: 1 ≤ atual ≤ total ≤ 120.",
+                    color = MaterialTheme.colorScheme.error,
+                )
+          }
         }
       },
       confirmButton = {
         TextButton(
-            enabled = valid,
+            modifier = Modifier.testTag("transaction-editor-save"),
             onClick = {
-              cents?.let { value ->
-                onSave(
-                    Transaction(
-                        id = id,
-                        accountId = transaction?.accountId ?: "manual-ledger",
-                        merchant = merchant.trim(),
-                        description = description.trim(),
-                        amountCents = if (income) value else -value,
-                        date = date,
-                        categoryId = categoryId,
-                        installmentNumber = parsedInstallmentNumber.takeIf { hasInstallments },
-                        installmentCount = parsedInstallmentCount.takeIf { hasInstallments },
-                        recurring = !income && recurring,
-                        origin = transaction?.origin ?: TransactionOrigin.MANUAL,
-                        importNoticeId = transaction?.importNoticeId,
-                    )
-                )
+              attemptedSave = true
+              if (!valid && hasInstallments) detailsExpanded = true
+              if (valid) {
+                cents?.let { value ->
+                  onSave(
+                      Transaction(
+                          id = id,
+                          accountId = transaction?.accountId ?: "manual-ledger",
+                          merchant = merchant.trim(),
+                          description = description.trim(),
+                          amountCents = if (income) value else -value,
+                          date = date,
+                          categoryId = categoryId,
+                          installmentNumber = parsedInstallmentNumber.takeIf { hasInstallments },
+                          installmentCount = parsedInstallmentCount.takeIf { hasInstallments },
+                          recurring = !income && recurring,
+                          origin = transaction?.origin ?: TransactionOrigin.MANUAL,
+                          importNoticeId = transaction?.importNoticeId,
+                      )
+                  )
+                }
               }
             },
         ) {
@@ -521,4 +661,38 @@ private fun TransactionEditor(
       },
       dismissButton = { TextButton(onClick = onDismiss) { Text("Cancelar") } },
   )
+
+  if (datePickerVisible) {
+    val pickerState =
+        rememberDatePickerState(
+            initialSelectedDateMillis =
+                parsedDate?.atStartOfDay(ZoneOffset.UTC)?.toInstant()?.toEpochMilli()
+        )
+    DatePickerDialog(
+        onDismissRequest = { datePickerVisible = false },
+        confirmButton = {
+          TextButton(
+              enabled = pickerState.selectedDateMillis != null,
+              onClick = {
+                pickerState.selectedDateMillis?.let { millis ->
+                  date =
+                      java.time.Instant.ofEpochMilli(millis)
+                          .atZone(ZoneOffset.UTC)
+                          .toLocalDate()
+                          .toString()
+                  dateTouched = true
+                }
+                datePickerVisible = false
+              },
+          ) {
+            Text("Selecionar")
+          }
+        },
+        dismissButton = {
+          TextButton(onClick = { datePickerVisible = false }) { Text("Cancelar") }
+        },
+    ) {
+      DatePicker(state = pickerState, modifier = Modifier.testTag("transaction-date-picker"))
+    }
+  }
 }
