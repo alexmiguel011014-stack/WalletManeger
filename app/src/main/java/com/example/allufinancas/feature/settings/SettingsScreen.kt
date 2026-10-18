@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.*
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.Lifecycle
@@ -70,7 +71,7 @@ internal fun Settings(
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            "Lançamentos, limites e mensagens do assistente ficam salvos neste dispositivo. A importação opcional da Rico usa apenas notificações que você selecionar e confirmar; não há API bancária, credenciais ou rede."
+            "Lançamentos e limites ficam salvos neste dispositivo. A importação opcional da Rico usa apenas notificações que você selecionar e confirmar; não há API bancária, credenciais ou rede."
         )
         Text(
             "Você pode editar ou excluir lançamentos pelo extrato. A exportação de dados ainda não está disponível."
@@ -86,7 +87,7 @@ internal fun Settings(
             fontWeight = FontWeight.Bold,
         )
         Text(
-            "Apaga lançamentos, limites, metas, avisos, decisões, rascunhos importados e mensagens do assistente. As categorias padrão e suas preferências ficam.",
+            "Apaga lançamentos, limites, metas, avisos, decisões e rascunhos importados. As categorias padrão e suas preferências ficam.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         TextButton(onClick = { confirmReset = true }) { Text("Excluir todos os dados") }
@@ -97,7 +98,7 @@ internal fun Settings(
       visible = confirmReset,
       title = "Excluir todos os dados locais?",
       message =
-          "Esta ação apaga seus lançamentos, limites, metas, avisos, decisões, rascunhos importados e mensagens do assistente. As categorias padrão e preferências de exibição serão preservadas. A permissão de notificações continua nas configurações do Android.",
+          "Esta ação apaga seus lançamentos, limites, metas, avisos, decisões e rascunhos importados. As categorias padrão e preferências de exibição serão preservadas. A permissão de notificações continua nas configurações do Android.",
       confirmLabel = "Excluir dados",
       onConfirm = {
         confirmReset = false
@@ -149,7 +150,9 @@ private fun ImportSettings(
     if (source == null) {
       val ricoInstalled = notificationSourceInstalled(context, NotificationImportSource.RICO)
       if (ricoInstalled) {
-        Text("Nenhuma fonte selecionada. A única opção desta versão é a Rico.")
+        Text(
+            "Captura desconectada. A única fonte disponível nesta versão é a Rico; nenhum aviso será capturado até você selecioná-la e liberar a permissão do Android."
+        )
         Button(
             onClick = { model.enableImportSource(NotificationImportSource.RICO) },
             modifier = Modifier.fillMaxWidth(),
@@ -158,7 +161,7 @@ private fun ImportSettings(
         }
       } else {
         Text(
-            "A Rico não foi encontrada neste aparelho. Instale ou abra a Rico e volte aqui para selecioná-la.",
+            "Fonte indisponível: a Rico não foi encontrada neste aparelho. Instale ou abra a Rico e volte aqui para selecioná-la; a captura permanece desligada.",
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
@@ -167,10 +170,10 @@ private fun ImportSettings(
       Text(
           when {
             !sourceInstalled ->
-                "A Rico não foi encontrada neste aparelho. A captura está pausada até que ela esteja disponível."
-            listenerAccessEnabled -> "Acesso a notificações: ativo no Android."
+                "Fonte indisponível: a Rico não foi encontrada neste aparelho. A captura está pausada até que ela esteja disponível."
+            listenerAccessEnabled -> "Conexão ativa: acesso a notificações liberado no Android."
             else ->
-                "Acesso a notificações revogado ou ainda não autorizado no Android. A captura está pausada."
+                "Permissão ausente: o acesso a notificações foi negado, revogado ou ainda não autorizado no Android. A captura está pausada."
           },
           color =
               if (sourceInstalled && listenerAccessEnabled) MaterialTheme.colorScheme.tertiary
@@ -271,7 +274,7 @@ private fun ImportFeedSuffixSettings(
   Spacer(Modifier.height(12.dp))
   Text("Filtro opcional da conta ou cartão", style = MaterialTheme.typography.titleSmall)
   Text(
-      "Informe apenas os quatro dígitos finais que aparecem visivelmente na notificação da Rico. Se o aviso não mostrar esse final, deixe o campo vazio para usar somente a fonte Rico.",
+      "Informe apenas os quatro dígitos finais que aparecem visivelmente na notificação da Rico. Deixe vazio somente se não precisar separar feeds; nesse caso, nenhum aviso será atribuído a uma conta ou cartão.",
       style = MaterialTheme.typography.labelSmall,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
   )
@@ -286,6 +289,7 @@ private fun ImportFeedSuffixSettings(
       label = { Text("Últimos 4 dígitos (opcional)") },
       singleLine = true,
       isError = !valid,
+      visualTransformation = PasswordVisualTransformation(),
       modifier =
           Modifier.fillMaxWidth().semantics {
             contentDescription = "Filtro por quatro dígitos finais"
@@ -304,8 +308,11 @@ private fun ImportFeedSuffixSettings(
       TextButton(onClick = { onSave(null) }) { Text("Remover filtro") }
     }
   }
-  savedSuffix?.let {
-    Text("Filtro ativo: final •••• $it", style = MaterialTheme.typography.labelSmall)
+  if (savedSuffix != null) {
+    Text(
+        "Filtro de feed ativo. O identificador não é exibido nem salvo no rascunho.",
+        style = MaterialTheme.typography.labelSmall,
+    )
   }
 }
 

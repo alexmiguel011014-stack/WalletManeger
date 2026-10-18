@@ -111,7 +111,6 @@ private class FakeDemoDataSource : DemoDataSource {
   override val alerts = MutableStateFlow(emptyList<Alert>())
   override val reconciliationCases = MutableStateFlow(emptyList<ReconciliationCase>())
   override val goals = MutableStateFlow(emptyList<Goal>())
-  override val messages = MutableStateFlow(emptyList<AssistantMessage>())
   override val preferences = MutableStateFlow(DisplayPreferences())
   override val materializedAt = MutableStateFlow<Instant?>(null)
 
@@ -128,8 +127,6 @@ private class FakeDemoDataSource : DemoDataSource {
   override suspend fun reopenReconciliationCase(caseId: String) = Unit
 
   override suspend fun setAlertDismissed(alertId: String, dismissed: Boolean) = Unit
-
-  override suspend fun sendMessage(text: String) = AssistantAnswer("Resposta fictícia")
 
   override suspend fun resetDemoData() = Unit
 

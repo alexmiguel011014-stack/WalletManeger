@@ -35,45 +35,81 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class NotificationImportPersistenceTest {
   @Test
-  fun versionThreeMigrationKeepsLedgerRowsAndAddsAnEmptyImportQueue() = runBlocking {
+  fun versionThreeMigrationKeepsLedgerRowsAddsAnEmptyImportQueueAndRemovesAssistantMessages() =
+      runBlocking {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val name = "allu_import_migration_v3_test.db"
+        val preferences = DemoPreferences(context)
+        val previousPreferences = preferences.state.first()
+        try {
+          preferences.setDarkTheme(true)
+          preferences.setReduceMotion(true)
+          preferences.setShowCents(false)
+          context.deleteDatabase(name)
+          val legacy = context.openOrCreateDatabase(name, Context.MODE_PRIVATE, null)
+          createVersionThreeSchema(legacy)
+          legacy.execSQL("INSERT INTO categories VALUES ('alimentacao', 'Alimentação', '#000000')")
+          legacy.execSQL(
+              "INSERT INTO transactions VALUES ('legacy', 'manual-ledger', 'Padaria', 'Compra', -889, '2026-09-30', 'alimentacao', NULL, NULL, 0)"
+          )
+          legacy.version = 3
+          legacy.close()
+
+          val migrated = DemoDatabase.open(context, name)
+          try {
+            val transaction = migrated.dao().allTransactions().single()
+            assertEquals("legacy", transaction.id)
+            assertEquals(TransactionOrigin.MANUAL.name, transaction.origin)
+            assertNull(transaction.importNoticeId)
+            assertTrue(migrated.dao().allImportNotices().isEmpty())
+            val database = migrated.openHelper.writableDatabase
+            assertEquals(5, database.version)
+            assertFalse(tableExists(database, "assistant_messages"))
+            val restoredPreferences = preferences.state.first()
+            assertTrue(restoredPreferences.darkTheme)
+            assertTrue(restoredPreferences.reduceMotion)
+            assertFalse(restoredPreferences.showCents)
+          } finally {
+            migrated.close()
+          }
+        } finally {
+          context.deleteDatabase(name)
+          preferences.setDarkTheme(previousPreferences.darkTheme)
+          preferences.setReduceMotion(previousPreferences.reduceMotion)
+          preferences.setShowCents(previousPreferences.showCents)
+        }
+      }
+
+  @Test
+  fun versionFourMigrationDropsOnlyAssistantMessages() = runBlocking {
     val context = InstrumentationRegistry.getInstrumentation().targetContext
-    val name = "allu_import_migration_v3_test.db"
-    val preferences = DemoPreferences(context)
-    val previousPreferences = preferences.state.first()
+    val name = "allu_remove_assistant_migration_v4_test.db"
+    context.deleteDatabase(name)
     try {
-      preferences.setDarkTheme(true)
-      preferences.setReduceMotion(true)
-      preferences.setShowCents(false)
-      context.deleteDatabase(name)
       val legacy = context.openOrCreateDatabase(name, Context.MODE_PRIVATE, null)
-      createVersionThreeSchema(legacy)
+      createVersionFourSchema(legacy)
       legacy.execSQL("INSERT INTO categories VALUES ('alimentacao', 'Alimentação', '#000000')")
       legacy.execSQL(
-          "INSERT INTO transactions VALUES ('legacy', 'manual-ledger', 'Padaria', 'Compra', -889, '2026-09-30', 'alimentacao', NULL, NULL, 0)"
+          "INSERT INTO transactions VALUES ('legacy', 'manual-ledger', 'Padaria', 'Compra', -889, '2026-09-30', 'alimentacao', NULL, NULL, 0, 'MANUAL', NULL)"
       )
-      legacy.version = 3
+      legacy.execSQL(
+          "INSERT INTO assistant_messages (role, text, createdAt, citationTransactionIds) VALUES ('USER', 'Mensagem antiga', '2026-09-30T10:00:00', '')"
+      )
+      legacy.version = 4
       legacy.close()
 
       val migrated = DemoDatabase.open(context, name)
       try {
-        val transaction = migrated.dao().allTransactions().single()
-        assertEquals("legacy", transaction.id)
-        assertEquals(TransactionOrigin.MANUAL.name, transaction.origin)
-        assertNull(transaction.importNoticeId)
-        assertTrue(migrated.dao().allImportNotices().isEmpty())
-        assertEquals(4, migrated.openHelper.writableDatabase.version)
-        val restoredPreferences = preferences.state.first()
-        assertTrue(restoredPreferences.darkTheme)
-        assertTrue(restoredPreferences.reduceMotion)
-        assertFalse(restoredPreferences.showCents)
+        val database = migrated.openHelper.writableDatabase
+        assertEquals(5, database.version)
+        assertFalse(tableExists(database, "assistant_messages"))
+        assertEquals("legacy", migrated.dao().allTransactions().single().id)
+        assertEquals("alimentacao", migrated.dao().allCategories().single().id)
       } finally {
         migrated.close()
       }
     } finally {
       context.deleteDatabase(name)
-      preferences.setDarkTheme(previousPreferences.darkTheme)
-      preferences.setReduceMotion(previousPreferences.reduceMotion)
-      preferences.setShowCents(previousPreferences.showCents)
     }
   }
 
@@ -439,4 +475,30 @@ class NotificationImportPersistenceTest {
         "CREATE TABLE reconciliation_decisions (caseId TEXT NOT NULL, kind TEXT NOT NULL, transactionIds TEXT NOT NULL, categoryId TEXT, PRIMARY KEY(caseId))"
     )
   }
+
+  private fun createVersionFourSchema(db: android.database.sqlite.SQLiteDatabase) {
+    createVersionThreeSchema(db)
+    db.execSQL("ALTER TABLE transactions ADD COLUMN origin TEXT NOT NULL DEFAULT 'MANUAL'")
+    db.execSQL("ALTER TABLE transactions ADD COLUMN importNoticeId TEXT")
+    db.execSQL(
+        "CREATE UNIQUE INDEX index_transactions_importNoticeId ON transactions (importNoticeId)"
+    )
+    db.execSQL(
+        "CREATE TABLE import_notices (id TEXT NOT NULL, source TEXT NOT NULL, sourceEventHash TEXT NOT NULL, fingerprintHash TEXT NOT NULL, merchant TEXT NOT NULL, description TEXT NOT NULL, amountCents INTEGER NOT NULL, date TEXT NOT NULL, kind TEXT NOT NULL, status TEXT NOT NULL, possibleDuplicate INTEGER NOT NULL, observedAt TEXT NOT NULL, confirmedTransactionId TEXT, PRIMARY KEY(id))"
+    )
+    db.execSQL(
+        "CREATE UNIQUE INDEX index_import_notices_sourceEventHash ON import_notices (sourceEventHash)"
+    )
+    db.execSQL(
+        "CREATE INDEX index_import_notices_fingerprintHash ON import_notices (fingerprintHash)"
+    )
+  }
+
+  private fun tableExists(
+      database: androidx.sqlite.db.SupportSQLiteDatabase,
+      table: String,
+  ): Boolean =
+      database
+          .query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", arrayOf(table))
+          .use { it.moveToFirst() }
 }

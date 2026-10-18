@@ -347,6 +347,24 @@ private fun FirstSessionHome(
         }
       }
     }
+    if (pendingImportCount > 0)
+        item {
+          Panel {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+              Text("Importações aguardam sua revisão", fontWeight = FontWeight.Bold)
+              Text(
+                  "$pendingImportCount lançamento(s) ainda não entram no saldo até você confirmar.",
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+              Button(
+                  onClick = onOpenImports,
+                  modifier = Modifier.fillMaxWidth().testTag("home-imports-shortcut"),
+              ) {
+                Text("Revisar importações pendentes ($pendingImportCount)")
+              }
+            }
+          }
+        }
     item {
       Surface(
           color = MaterialTheme.colorScheme.secondaryContainer,
@@ -369,7 +387,7 @@ private fun FirstSessionHome(
         Spacer(Modifier.height(6.dp))
         Text("1 · Primeiro lançamento", fontWeight = FontWeight.SemiBold)
         Text("2 · Primeiro limite", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("3 · Avisos e Assistente", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("3 · Avisos", color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
     }
     item {
@@ -380,7 +398,7 @@ private fun FirstSessionHome(
         Text("Adicionar lançamento")
       }
     }
-    if (importSourceEnabled || pendingImportCount > 0)
+    if (importSourceEnabled && pendingImportCount == 0)
         item {
           OutlinedButton(
               onClick = onOpenImports,

@@ -82,11 +82,16 @@ class BudgetScenarioFlowTest {
   }
 
   private fun enterDemo() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar").performClick()
+      rule.onNodeWithContentDescription("Início").performClick()
     }
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
   }
 

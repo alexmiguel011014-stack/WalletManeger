@@ -1,5 +1,7 @@
 package com.example.allufinancas.feature.imports
 
+import android.content.Context
+import android.content.pm.PackageManager
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -64,7 +66,28 @@ internal data class ImportInboxUiData(
     val categories: List<Category>,
     val preferences: DisplayPreferences,
     val enabledSource: NotificationImportSource?,
+    val importFeedSuffix: String?,
 )
+
+/** Pure state seam for conditions that pause new notification capture. */
+internal enum class ImportConnectionState {
+  DISCONNECTED,
+  SOURCE_UNAVAILABLE,
+  PERMISSION_UNAVAILABLE,
+  READY,
+}
+
+internal fun importConnectionState(
+    source: NotificationImportSource?,
+    sourceInstalled: Boolean,
+    listenerAccessEnabled: Boolean,
+): ImportConnectionState =
+    when {
+      source == null -> ImportConnectionState.DISCONNECTED
+      !sourceInstalled -> ImportConnectionState.SOURCE_UNAVAILABLE
+      !listenerAccessEnabled -> ImportConnectionState.PERMISSION_UNAVAILABLE
+      else -> ImportConnectionState.READY
+    }
 
 internal class ImportInboxViewModel(dataSource: DemoDataSource) : DataScreenViewModel(dataSource) {
   private val screenData =
@@ -72,8 +95,9 @@ internal class ImportInboxViewModel(dataSource: DemoDataSource) : DataScreenView
               dataSource.importNotices,
               dataSource.categories,
               dataSource.preferences,
-          ) { notices, categories, preferences ->
-            ImportInboxUiData(notices, categories, preferences, null)
+              dataSource.importFeedSuffix,
+          ) { notices, categories, preferences, feedSuffix ->
+            ImportInboxUiData(notices, categories, preferences, null, feedSuffix)
           }
           .combine(dataSource.enabledImportSource) { data, source ->
             data.copy(enabledSource = source)
@@ -93,6 +117,12 @@ internal fun ImportInbox(
 ) {
   val context = LocalContext.current
   val lifecycleOwner = LocalLifecycleOwner.current
+  var sourceInstalled by
+      remember(data.enabledSource, context) {
+        mutableStateOf(
+            data.enabledSource?.let { notificationSourceInstalled(context, it) } ?: false
+        )
+      }
   var listenerAccessEnabled by
       remember(context) {
         mutableStateOf(
@@ -100,17 +130,21 @@ internal fun ImportInbox(
                 .contains(context.packageName)
         )
       }
-  DisposableEffect(lifecycleOwner, context) {
+  DisposableEffect(lifecycleOwner, context, data.enabledSource) {
     val observer = LifecycleEventObserver { _, event ->
       if (event == Lifecycle.Event.ON_RESUME) {
         listenerAccessEnabled =
             NotificationManagerCompat.getEnabledListenerPackages(context)
                 .contains(context.packageName)
+        sourceInstalled =
+            data.enabledSource?.let { notificationSourceInstalled(context, it) } ?: false
       }
     }
     lifecycleOwner.lifecycle.addObserver(observer)
     onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
   }
+  val connectionState =
+      importConnectionState(data.enabledSource, sourceInstalled, listenerAccessEnabled)
   val pending = data.notices.filter { it.status == ImportNoticeStatus.PENDING }
   var editingNoticeId by rememberSaveable { mutableStateOf<String?>(null) }
   val editingNotice = pending.firstOrNull { it.id == editingNoticeId }
@@ -122,7 +156,7 @@ internal fun ImportInbox(
   ) {
     item {
       DemoStrip(
-          "Importações pendentes · ${data.enabledSource?.displayName ?: if (pending.isNotEmpty()) "captura pausada" else "sem fonte"}",
+          "Importações pendentes · ${importConnectionLabel(connectionState, data.enabledSource)}",
           materializedAt,
       )
     }
@@ -137,19 +171,9 @@ internal fun ImportInbox(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
     }
-    if (data.enabledSource == null && pending.isNotEmpty()) {
+    if (connectionState != ImportConnectionState.READY) {
       item {
-        Panel {
-          Text(
-              "Captura pausada",
-              style = MaterialTheme.typography.titleMedium,
-              fontWeight = FontWeight.Bold,
-          )
-          Text(
-              "A Rico foi desconectada, mas estes rascunhos foram mantidos. Você ainda pode revisar, confirmar ou ignorar cada um.",
-              color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
+        ImportConnectionPanel(connectionState, pending.isNotEmpty(), onOpenSettings)
       }
     }
     when {
@@ -164,22 +188,32 @@ internal fun ImportInbox(
                 onAcknowledgeNeutral = { onResolve(notice.id, ImportNoticeResolution.NEUTRAL) },
             )
           }
-      data.enabledSource == null ->
+      connectionState == ImportConnectionState.DISCONNECTED ->
           item {
             EmptyState(
-                title = "Nenhuma fonte selecionada",
+                title = "Captura desconectada",
                 message =
-                    "Escolha a Rico em Ajustes e ative o acesso a notificações do Android para receber rascunhos aqui.",
+                    "Selecione a Rico em Ajustes e ative o acesso a notificações do Android para receber novos rascunhos.",
                 actionLabel = "Abrir ajustes",
                 onAction = onOpenSettings,
             )
           }
-      !listenerAccessEnabled ->
+      connectionState == ImportConnectionState.SOURCE_UNAVAILABLE ->
           item {
             EmptyState(
-                title = "Acesso a notificações não autorizado",
+                title = "Rico indisponível neste aparelho",
                 message =
-                    "A Rico está selecionada, mas o Android ainda não liberou o acesso a notificações do wallet Manager. Nenhum aviso novo será capturado até você autorizar e voltar ao app.",
+                    "A fonte selecionada não está instalada ou não está disponível. A captura permanece pausada e nenhum aviso novo será lido.",
+                actionLabel = "Abrir ajustes",
+                onAction = onOpenSettings,
+            )
+          }
+      connectionState == ImportConnectionState.PERMISSION_UNAVAILABLE ->
+          item {
+            EmptyState(
+                title = "Acesso a notificações ausente",
+                message =
+                    "O acesso foi negado, revogado ou ainda não autorizado no Android. Nenhum aviso novo será capturado até você autorizar e voltar ao app.",
                 actionLabel = "Abrir ajustes",
                 onAction = onOpenSettings,
             )
@@ -195,7 +229,7 @@ internal fun ImportInbox(
     }
     item {
       Text(
-          "Pagamento de fatura e transferências ficam como itens neutros. Estornos e reversões não viram entrada automaticamente.",
+          importFeedSafetyMessage(data.importFeedSuffix),
           style = MaterialTheme.typography.labelMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -215,6 +249,65 @@ internal fun ImportInbox(
     )
   }
 }
+
+@Composable
+private fun ImportConnectionPanel(
+    state: ImportConnectionState,
+    hasPendingDrafts: Boolean,
+    onOpenSettings: () -> Unit,
+) {
+  val (title, message) =
+      when (state) {
+        ImportConnectionState.DISCONNECTED ->
+            "Captura desconectada" to
+                if (hasPendingDrafts) {
+                  "A Rico foi desconectada, mas estes rascunhos foram mantidos. Você ainda pode revisar, confirmar ou ignorar cada um."
+                } else {
+                  "Nenhuma fonte está conectada. Novas notificações não são capturadas."
+                }
+        ImportConnectionState.SOURCE_UNAVAILABLE ->
+            "Rico indisponível" to
+                "A fonte selecionada não está disponível neste aparelho. A captura está pausada; os rascunhos existentes continuam sob seu controle."
+        ImportConnectionState.PERMISSION_UNAVAILABLE ->
+            "Permissão de notificações necessária" to
+                "O acesso foi negado, revogado ou ainda não autorizado no Android. A captura está pausada até você liberar o acesso."
+        ImportConnectionState.READY -> return
+      }
+  Panel {
+    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+    Text(message, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    TextButton(onClick = onOpenSettings) { Text("Abrir ajustes") }
+  }
+}
+
+private fun importConnectionLabel(
+    state: ImportConnectionState,
+    source: NotificationImportSource?,
+): String =
+    when (state) {
+      ImportConnectionState.DISCONNECTED -> "captura desconectada"
+      ImportConnectionState.SOURCE_UNAVAILABLE -> "fonte indisponível"
+      ImportConnectionState.PERMISSION_UNAVAILABLE -> "permissão necessária"
+      ImportConnectionState.READY -> source?.displayName.orEmpty()
+    }
+
+private fun importFeedSafetyMessage(feedSuffix: String?): String =
+    if (feedSuffix == null) {
+      "Sem filtro de feed, o wallet Manager não atribui um aviso a conta ou cartão. Configure um identificador confiável se precisar separar feeds. Pagamentos de fatura e transferências ficam neutros; estornos não viram entrada automaticamente."
+    } else {
+      "Filtro de feed ativo. Avisos de outro feed são descartados antes de chegar aqui. Pagamentos de fatura e transferências ficam neutros; estornos não viram entrada automaticamente."
+    }
+
+private fun notificationSourceInstalled(
+    context: Context,
+    source: NotificationImportSource,
+): Boolean =
+    try {
+      context.packageManager.getApplicationInfo(source.packageName, 0)
+      true
+    } catch (_: PackageManager.NameNotFoundException) {
+      false
+    }
 
 @Composable
 private fun ImportNoticeCard(

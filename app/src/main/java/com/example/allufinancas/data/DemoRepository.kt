@@ -5,7 +5,6 @@ import androidx.room.withTransaction
 import java.time.Clock
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalDateTime
 import java.time.YearMonth
 import java.util.Locale
 import kotlinx.coroutines.CancellationException
@@ -49,8 +48,6 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
         ReconciliationRules.cases(rows, decisions)
       }
   override val goals: Flow<List<Goal>> = dao.goals().map { rows -> rows.map { it.toModel() } }
-  override val messages: Flow<List<AssistantMessage>> =
-      dao.messages().map { rows -> rows.map { it.toModel() } }
   override val preferences: Flow<DisplayPreferences> = settings.state
   override val materializedAt: Flow<Instant?> = settings.materializedAt
   override val enabledImportSource: Flow<NotificationImportSource?> = settings.enabledImportSource
@@ -264,48 +261,12 @@ class DemoRepository(context: Context, private val clock: Clock = Clock.systemUT
     recordMaterializedAt()
   }
 
-  override suspend fun sendMessage(text: String): AssistantAnswer {
-    val prompt = text.trim()
-    require(prompt.isNotEmpty()) { "Digite uma pergunta" }
-    require(prompt.length <= 500) { "Pergunta muito longa" }
-    val answer = database.withTransaction {
-      val answer =
-          LocalAssistant.answer(
-              prompt,
-              effectiveTransactionsLocked(),
-              dao.allCategories().map { it.toModel() },
-              dao.allBudgets().map { it.toModel() },
-          )
-      val now = LocalDateTime.now().toString()
-      dao.putMessage(
-          MessageRow(
-              role = MessageRole.USER.name,
-              text = prompt,
-              createdAt = now,
-              citationTransactionIds = emptyList(),
-          )
-      )
-      dao.putMessage(
-          MessageRow(
-              role = MessageRole.ASSISTANT.name,
-              text = answer.text,
-              createdAt = now,
-              citationTransactionIds = answer.citationTransactionIds,
-          )
-      )
-      answer
-    }
-    recordMaterializedAt()
-    return answer
-  }
-
   override suspend fun resetDemoData() {
     NotificationImportGate.fence {
       // Disable capture and clear all drafts in one fence, so a capture cannot survive reset.
       settings.setEnabledImportSource(null)
       database.withTransaction {
         dao.clearImportNotices()
-        dao.clearMessages()
         dao.clearAlerts()
         dao.clearReconciliationDecisions()
         dao.clearBudgets()
@@ -615,12 +576,3 @@ private fun AlertRow.toModel() =
     )
 
 private fun GoalRow.toModel() = Goal(id, name, targetCents, savedCents)
-
-private fun MessageRow.toModel() =
-    AssistantMessage(
-        id,
-        MessageRole.valueOf(role),
-        text,
-        createdAt,
-        citationTransactionIds,
-    )

@@ -2,8 +2,6 @@ package com.example.allufinancas.navigation
 
 import com.example.allufinancas.data.AccountSummary
 import com.example.allufinancas.data.Alert
-import com.example.allufinancas.data.AssistantAnswer
-import com.example.allufinancas.data.AssistantMessage
 import com.example.allufinancas.data.Budget
 import com.example.allufinancas.data.Category
 import com.example.allufinancas.data.DemoDataSource
@@ -45,7 +43,6 @@ class AlluViewModelActionsTest {
         viewModel.decideReview("duplicate-tx")
         viewModel.reopenReview("duplicate-tx")
         viewModel.setAlertDismissed("alert", true)
-        viewModel.sendMessage("pergunta")
         viewModel.resetDemo()
         viewModel.setDarkTheme(true)
         viewModel.setReduceMotion(true)
@@ -59,7 +56,6 @@ class AlluViewModelActionsTest {
                 "decide:duplicate-tx",
                 "reopen:duplicate-tx",
                 "alert:alert:true",
-                "message:pergunta",
                 "reset",
                 "dark:true",
                 "motion:true",
@@ -129,7 +125,6 @@ private class RecordingDemoDataSource(private val failOn: String? = null) : Demo
   override val alerts: Flow<List<Alert>> = MutableStateFlow(emptyList())
   override val reconciliationCases: Flow<List<ReconciliationCase>> = MutableStateFlow(emptyList())
   override val goals: Flow<List<Goal>> = MutableStateFlow(emptyList())
-  override val messages: Flow<List<AssistantMessage>> = MutableStateFlow(emptyList())
   override val preferences: Flow<DisplayPreferences> = MutableStateFlow(DisplayPreferences())
   override val materializedAt: Flow<Instant?> = MutableStateFlow(null)
 
@@ -149,11 +144,6 @@ private class RecordingDemoDataSource(private val failOn: String? = null) : Demo
 
   override suspend fun setAlertDismissed(alertId: String, dismissed: Boolean) =
       record("alert:$alertId:$dismissed")
-
-  override suspend fun sendMessage(text: String): AssistantAnswer {
-    record("message:$text")
-    return AssistantAnswer("resposta")
-  }
 
   override suspend fun resetDemoData() = record("reset")
 

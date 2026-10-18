@@ -31,4 +31,4 @@ The first phone viewport must show the demo disclosure, period, total balance, i
 
 ## Acceptance frame
 
-Evaluate rendered Android screens for welcome, dashboard, transaction list/detail, budget edit, alert inbox, assistant, and settings. Also inspect empty/error, long BRL values, large font, and dark mode. Automated checks prove calculations and navigation, but final visual approval remains with the owner after an actual installed build.
+Evaluate rendered Android screens for welcome, dashboard, transaction list/detail, budget edit, alert inbox, and settings. Also inspect empty/error, long BRL values, large font, and dark mode. Automated checks prove calculations and navigation, but final visual approval remains with the owner after an actual installed build.

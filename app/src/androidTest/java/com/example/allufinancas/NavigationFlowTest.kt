@@ -42,20 +42,20 @@ class NavigationFlowTest {
   @Test
   fun filtersSurviveTabSwitchBackStackAndActivityRecreation() {
     enterDashboard()
-    assertProvenance("Início · período ${LocalLedgerFixtures.MONTH}")
+    assertScreenReady("Saldo líquido dos lançamentos")
     rule.onNodeWithContentDescription("Extrato").performClick()
-    assertProvenance("Todos os movimentos")
+    assertScreenReady("Buscar estabelecimento")
     rule.onNodeWithTag("transaction-categories").performScrollToNode(hasText("Compras"))
     rule.onNodeWithText("Compras").performClick()
     rule.onNodeWithText(LocalLedgerFixtures.MONTH).performScrollTo().performClick()
     rule.onNodeWithText("Buscar estabelecimento").performScrollTo().performTextInput("Notebook")
-    assertProvenance("Período: ${LocalLedgerFixtures.MONTH} · Busca: Notebook · Categoria: Compras")
+    assertScreenReady("Loja Exemplo")
     rule.onNodeWithText("Loja Exemplo").performScrollTo().assertExists()
 
     rule.onNodeWithContentDescription("Avisos").performClick()
-    assertProvenance("Avisos · regras locais · período ${LocalLedgerFixtures.MONTH}")
+    assertScreenReady("Gerado localmente em")
     rule.onNodeWithContentDescription("Extrato").performClick()
-    assertProvenance("Período: ${LocalLedgerFixtures.MONTH} · Busca: Notebook · Categoria: Compras")
+    assertScreenReady("Loja Exemplo")
     rule.onNodeWithText("Notebook").assertExists()
     assertMonthSelected()
     rule.onNodeWithText("Loja Exemplo").assertExists()
@@ -93,7 +93,7 @@ class NavigationFlowTest {
     assertMonthSelected()
 
     rule.onNodeWithText("Loja Exemplo").performScrollTo().performClick()
-    assertProvenance("Detalhe · Loja Exemplo")
+    assertScreenReady("Estabelecimento: Loja Exemplo")
     rule.onNodeWithText("Estabelecimento: Loja Exemplo").assertExists()
     pressBack()
     rule.onNodeWithText("Notebook").assertExists()
@@ -119,21 +119,28 @@ class NavigationFlowTest {
     }
     rule.onNodeWithTag("bottom-navigation").assertDoesNotExist()
     rule.onNodeWithContentDescription("Avisos").performClick()
-    assertProvenance("Avisos · regras locais · período ${LocalLedgerFixtures.MONTH}")
-    rule.waitUntil(10_000) { rule.onAllNodesWithText("Ativos").fetchSemanticsNodes().isNotEmpty() }
-    rule.onNodeWithText("Ativos").assertExists()
+    assertScreenReady("Gerado localmente em")
     rule.onNodeWithContentDescription("Início").performClick()
-    assertProvenance("Início · período ${LocalLedgerFixtures.MONTH}")
+    assertScreenReady("Saldo líquido dos lançamentos")
     rule.onNodeWithContentDescription("Planos").performClick()
-    assertProvenance("Limites por categoria · ${LocalLedgerFixtures.MONTH}")
+    assertScreenReady("Defina limites para seus gastos registrados.")
   }
 
   private fun enterDashboard() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Buscar estabelecimento").fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodesWithText("Comece seu extrato").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithContentDescription("Início").performClick()
     }
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
   }
 
@@ -150,13 +157,9 @@ class NavigationFlowTest {
     )
   }
 
-  private fun assertProvenance(scope: String) {
+  private fun assertScreenReady(text: String) {
     rule.waitUntil(10_000) {
-      rule.onAllNodesWithText("Escopo: $scope", substring = true).fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty()
     }
-    rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
-    rule
-        .onNodeWithText("Fonte: lançamentos confirmados neste dispositivo", substring = true)
-        .assertExists()
   }
 }

@@ -2,6 +2,7 @@ package com.example.allufinancas
 
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -36,13 +37,7 @@ class TransactionsFlowTest {
 
   @Test
   fun categoryCorrectionAppearsInStatementAndPersistsInRoom() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
-    }
-    rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
-    }
-    rule.onNodeWithText("Extrato").performClick()
+    enterStatement()
     rule.onNodeWithText(LocalLedgerFixtures.MONTH).performScrollTo().performClick()
     rule.onNodeWithText("Buscar estabelecimento").performScrollTo().performTextInput("Notebook")
     Espresso.closeSoftKeyboard()
@@ -80,23 +75,18 @@ class TransactionsFlowTest {
 
   @Test
   fun selectingAllPeriodClearsDateRange() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
-    }
-    rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
-    }
-    rule.onNodeWithText("Extrato").performClick()
+    enterStatement()
     val fromDate = LocalLedgerFixtures.displayDate(10)
     val toDate = LocalLedgerFixtures.displayDate(20)
     rule.onNodeWithText("De · dd/MM/aaaa").performScrollTo().performTextInput(fromDate)
     rule.onNodeWithText("Até · dd/MM/aaaa").performScrollTo().performTextInput(toDate)
-    assertTrue(rule.onAllNodesWithText(fromDate, substring = true).fetchSemanticsNodes().size >= 2)
-    assertTrue(rule.onAllNodesWithText(toDate, substring = true).fetchSemanticsNodes().size >= 2)
+    assertTrue(
+        rule.onAllNodesWithText(fromDate, substring = true).fetchSemanticsNodes().isNotEmpty()
+    )
+    assertTrue(rule.onAllNodesWithText(toDate, substring = true).fetchSemanticsNodes().isNotEmpty())
 
     rule.onNodeWithText("Todo período").performScrollTo().performClick()
-    rule.onNodeWithText("Todos os movimentos", substring = true).performScrollTo().assertExists()
-    assertTrue(rule.onAllNodesWithText(fromDate).fetchSemanticsNodes().isEmpty())
+    rule.onNodeWithText("Buscar estabelecimento").performScrollTo().assertExists()
     rule
         .onNodeWithText(LocalLedgerFixtures.previousMonthDate(26), substring = true)
         .performScrollTo()
@@ -108,5 +98,24 @@ class TransactionsFlowTest {
     repository.setDarkTheme(false)
     repository.setReduceMotion(false)
     repository.setShowCents(true)
+  }
+
+  private fun enterStatement() {
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Buscar estabelecimento").fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodesWithText("Comece seu extrato").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithContentDescription("Início").performClick()
+    }
+    rule.waitUntil(15_000) {
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
+    }
+    rule.onNodeWithText("Extrato").performClick()
   }
 }

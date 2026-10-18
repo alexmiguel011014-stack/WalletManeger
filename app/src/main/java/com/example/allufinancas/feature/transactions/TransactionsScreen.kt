@@ -70,41 +70,32 @@ internal fun Transactions(
         month.isNotBlank() -> "Escolha um mês ou um intervalo, não os dois."
         rangeStart == null || rangeEnd == null ->
             "Informe as duas datas válidas no formato dd/MM/aaaa."
-        rangeStart != null && rangeEnd != null && rangeStart > rangeEnd ->
-            "A data inicial deve ser anterior ou igual à final."
+        rangeStart > rangeEnd -> "A data inicial deve ser anterior ou igual à final."
         else -> null
       }
-  val periodScope =
-      when {
-        rangeEntered && rangeProblem != null -> "Intervalo inválido"
-        rangeEntered -> "Período: $fromDate – $throughDate"
-        month.isNotBlank() -> "Período: $month"
-        else -> "Todos os movimentos"
-      }
-  val scope =
-      buildList {
-            add(periodScope)
-            search
-                .trim()
-                .takeIf { it.isNotEmpty() }
-                ?.let { query ->
-                  add("Busca: ${query.take(32)}${if (query.length > 32) "…" else ""}")
-                }
-            category
-                .takeIf { it.isNotBlank() }
-                ?.let {
-                  add(
-                      "Categoria: ${categories.firstOrNull { item -> item.id == category }?.name ?: "não disponível"}"
-                  )
-                }
-          }
-          .joinToString(" · ")
   LazyColumn(
       Modifier.fillMaxSize(),
       contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
       verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    if (transactions.isNotEmpty()) item { DemoStrip(scope, materializedAt) }
+    if (pendingImportCount > 0)
+        item {
+          Panel {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+              Text("Importações aguardam sua revisão", fontWeight = FontWeight.Bold)
+              Text(
+                  "$pendingImportCount lançamento(s) ainda não entram no extrato ou no saldo até você confirmar.",
+                  color = MaterialTheme.colorScheme.onSurfaceVariant,
+              )
+              Button(
+                  onClick = onOpenImports,
+                  modifier = Modifier.fillMaxWidth().testTag("transactions-imports-shortcut"),
+              ) {
+                Text("Revisar importações pendentes ($pendingImportCount)")
+              }
+            }
+          }
+        }
     item {
       Button(
           onClick = { adding = true },
@@ -113,7 +104,7 @@ internal fun Transactions(
         Text("Adicionar lançamento")
       }
     }
-    if (pendingImportCount > 0 || importSourceEnabled)
+    if (importSourceEnabled && pendingImportCount == 0)
         item {
           OutlinedButton(
               onClick = onOpenImports,
@@ -341,9 +332,13 @@ internal fun TransactionDetail(
 
 private val brazilianDateFormat =
     DateTimeFormatter.ofPattern("dd/MM/uuuu", Locale.forLanguageTag("pt-BR"))
+        .withResolverStyle(java.time.format.ResolverStyle.STRICT)
 
 private fun formatBrazilianDate(storedDate: String): String =
     runCatching { LocalDate.parse(storedDate).format(brazilianDateFormat) }.getOrDefault("")
+
+private fun parseBrazilianDate(input: String): LocalDate? =
+    runCatching { LocalDate.parse(input, brazilianDateFormat) }.getOrNull()
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -368,7 +363,9 @@ private fun TransactionEditor(
         )
       }
   var date by
-      rememberSaveable(id) { mutableStateOf(transaction?.date ?: LocalDate.now().toString()) }
+      rememberSaveable(id) {
+        mutableStateOf(formatBrazilianDate(transaction?.date ?: LocalDate.now().toString()))
+      }
   val initialIncome = (transaction?.amountCents ?: -1L) > 0
   var income by rememberSaveable(id) { mutableStateOf(initialIncome) }
   val incomeCategoryId =
@@ -421,7 +418,7 @@ private fun TransactionEditor(
   }
 
   val cents = BudgetAmount.parseCents(amount)
-  val parsedDate = runCatching { LocalDate.parse(date) }.getOrNull()
+  val parsedDate = parseBrazilianDate(date)
   val validDate = parsedDate != null
   val validMerchant = merchant.trim().isNotEmpty() && merchant.trim().length <= 120
   val validDescription = description.trim().length <= 300
@@ -548,22 +545,35 @@ private fun TransactionEditor(
                   color = MaterialTheme.colorScheme.error,
               )
           OutlinedTextField(
-              value = formatBrazilianDate(date),
-              onValueChange = {},
+              value = date,
+              onValueChange = { date = it.take(10) },
               label = { Text("Data · dd/MM/aaaa") },
               modifier =
                   Modifier.fillMaxWidth()
-                      .clickable {
-                        keyboardController?.hide()
-                        datePickerVisible = true
+                      .onFocusChanged {
+                        if (!it.isFocused) {
+                          dateTouched = true
+                        }
                       }
                       .testTag("transaction-editor-date"),
-              readOnly = true,
               singleLine = true,
               isError = (dateTouched || attemptedSave) && !validDate,
+              keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
           )
           if ((dateTouched || attemptedSave) && !validDate)
-              Text("Escolha uma data válida.", color = MaterialTheme.colorScheme.error)
+              Text(
+                  "Informe uma data válida em dd/MM/aaaa.",
+                  color = MaterialTheme.colorScheme.error,
+              )
+          TextButton(
+              onClick = {
+                keyboardController?.hide()
+                datePickerVisible = true
+              },
+              modifier = Modifier.heightIn(min = 48.dp),
+          ) {
+            Text("Escolher no calendário")
+          }
 
           TextButton(
               onClick = {
@@ -643,7 +653,7 @@ private fun TransactionEditor(
                           merchant = merchant.trim(),
                           description = description.trim(),
                           amountCents = if (income) value else -value,
-                          date = date,
+                          date = requireNotNull(parsedDate).toString(),
                           categoryId = categoryId,
                           installmentNumber = parsedInstallmentNumber.takeIf { hasInstallments },
                           installmentCount = parsedInstallmentCount.takeIf { hasInstallments },
@@ -679,7 +689,7 @@ private fun TransactionEditor(
                       java.time.Instant.ofEpochMilli(millis)
                           .atZone(ZoneOffset.UTC)
                           .toLocalDate()
-                          .toString()
+                          .format(brazilianDateFormat)
                   dateTouched = true
                 }
                 datePickerVisible = false

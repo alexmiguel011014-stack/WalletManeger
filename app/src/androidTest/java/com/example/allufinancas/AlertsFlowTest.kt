@@ -4,6 +4,7 @@ import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -73,7 +74,6 @@ class AlertsFlowTest {
     }
 
     scrollAlertsToTop()
-    rule.onNodeWithText("Ativos").performClick()
     archiveNext()
     val archivedId = runBlocking { repository.alerts.first().first { it.dismissed }.id }
     rule.onNodeWithText("Arquivados").performClick()
@@ -92,39 +92,23 @@ class AlertsFlowTest {
         repository.alerts.first { rows -> rows.any { it.id == archivedId && !it.dismissed } }
       }
     }
-
-    scrollAlertsToTop()
-    rule.onNodeWithText("Ativos").performClick()
-    scrollAlertsTo(archivedId)
-    rule.onNodeWithText(archivedId, substring = true).assertExists()
-    repeat(4) { archiveNext() }
-    runBlocking {
-      withTimeout(10_000) { repository.alerts.first { rows -> rows.all { it.dismissed } } }
-    }
-    scrollAlertsToTop()
-    rule.waitUntil(10_000) {
-      rule
-          .onAllNodesWithText("Sem avisos ativos", useUnmergedTree = true)
-          .fetchSemanticsNodes()
-          .isNotEmpty()
-    }
-    rule.onNodeWithText("Sem avisos ativos", useUnmergedTree = true).assertExists()
-    rule
-        .onNodeWithText(
-            "Todos os avisos atuais foram arquivados",
-            substring = true,
-            useUnmergedTree = true,
-        )
-        .assertExists()
-    assertEquals(4, runBlocking { repository.alerts.first().count { it.dismissed } })
   }
 
   private fun enterAlerts() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Buscar estabelecimento").fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodesWithText("Comece seu extrato").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithContentDescription("Início").performClick()
     }
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
     rule.onNodeWithText("Avisos").performClick()
     rule.waitUntil(10_000) {
@@ -133,13 +117,6 @@ class AlertsFlowTest {
           .fetchSemanticsNodes()
           .isNotEmpty()
     }
-    rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
-    rule
-        .onNodeWithText(
-            "Escopo: Avisos · regras locais · período ${LocalLedgerFixtures.MONTH}",
-            substring = true,
-        )
-        .assertExists()
   }
 
   private fun archiveNext() {

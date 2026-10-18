@@ -70,15 +70,6 @@ data class GoalRow(
     val savedCents: Long,
 )
 
-@Entity(tableName = "assistant_messages")
-data class MessageRow(
-    @PrimaryKey(autoGenerate = true) val id: Long = 0,
-    val role: String,
-    val text: String,
-    val createdAt: String,
-    val citationTransactionIds: List<String>,
-)
-
 @Entity(tableName = "reconciliation_decisions")
 data class ReconciliationDecisionRow(
     @PrimaryKey val caseId: String,
@@ -132,8 +123,6 @@ interface DemoDao {
 
   @Query("SELECT * FROM goals ORDER BY id") fun goals(): Flow<List<GoalRow>>
 
-  @Query("SELECT * FROM assistant_messages ORDER BY id") fun messages(): Flow<List<MessageRow>>
-
   @Query("SELECT * FROM reconciliation_decisions ORDER BY caseId")
   fun reconciliationDecisions(): Flow<List<ReconciliationDecisionRow>>
 
@@ -180,8 +169,6 @@ interface DemoDao {
 
   @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun putGoals(rows: List<GoalRow>)
 
-  @Insert suspend fun putMessage(row: MessageRow)
-
   @Insert(onConflict = OnConflictStrategy.REPLACE)
   suspend fun putReconciliationDecision(row: ReconciliationDecisionRow)
 
@@ -215,8 +202,6 @@ interface DemoDao {
   @Query("DELETE FROM alerts") suspend fun clearAlerts()
 
   @Query("DELETE FROM goals") suspend fun clearGoals()
-
-  @Query("DELETE FROM assistant_messages") suspend fun clearMessages()
 
   @Query("DELETE FROM reconciliation_decisions") suspend fun clearReconciliationDecisions()
 
@@ -252,11 +237,10 @@ interface DemoDao {
             BudgetRow::class,
             AlertRow::class,
             GoalRow::class,
-            MessageRow::class,
             ReconciliationDecisionRow::class,
             ImportNoticeRow::class,
         ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(DemoConverters::class)
@@ -344,19 +328,27 @@ abstract class DemoDatabase : RoomDatabase() {
           }
         }
 
+    /** Removes the retired local-assistant conversation without affecting financial records. */
+    val MIGRATION_4_5 =
+        object : Migration(4, 5) {
+          override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS assistant_messages")
+          }
+        }
+
     @Volatile private var instance: DemoDatabase? = null
 
     fun open(context: Context, name: String = "allu_demo.db"): DemoDatabase {
       if (name != "allu_demo.db") {
         return Room.databaseBuilder(context.applicationContext, DemoDatabase::class.java, name)
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
             .build()
       }
       return instance
           ?: synchronized(this) {
             instance
                 ?: Room.databaseBuilder(context.applicationContext, DemoDatabase::class.java, name)
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { instance = it }
           }

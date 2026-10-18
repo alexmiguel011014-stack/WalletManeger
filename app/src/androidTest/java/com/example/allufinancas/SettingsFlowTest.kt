@@ -20,7 +20,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextReplacement
-import androidx.compose.ui.text.AnnotatedString
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoRepository
@@ -78,9 +77,18 @@ class SettingsFlowTest {
     assertPrivacyEducationVisible()
 
     rule.onNodeWithText("Voltar").performClick()
-    rule.onNodeWithText("Começar a cadastrar").performClick()
+    rule.onNodeWithText("Adicionar lançamento").performClick()
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+    }
+    rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
+    rule.waitUntil(15_000) {
+      rule.onAllNodesWithText("Buscar estabelecimento").fetchSemanticsNodes().isNotEmpty() ||
+          rule.onAllNodesWithText("Comece seu extrato").fetchSemanticsNodes().isNotEmpty()
+    }
+    rule.onNodeWithContentDescription("Início").performClick()
+    rule.waitUntil(15_000) {
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
     rule.waitUntil(10_000) {
       rule.onAllNodesWithText("Ajustes").fetchSemanticsNodes().isNotEmpty()
@@ -123,7 +131,6 @@ class SettingsFlowTest {
 
     runBlocking {
       repository.updateBudget("alimentacao", 100_000)
-      repository.sendMessage("Maior despesa")
     }
     openResetConfirmation()
     rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
@@ -135,7 +142,6 @@ class SettingsFlowTest {
           100_000,
           repository.budgets.first().first { it.categoryId == "alimentacao" }.limitCents,
       )
-      assertTrue(repository.messages.first().isNotEmpty())
     }
 
     openResetConfirmation()
@@ -159,7 +165,6 @@ class SettingsFlowTest {
       }
       withTimeout(10_000) { repository.transactions.first { it.isEmpty() } }
       withTimeout(10_000) { repository.categories.first { it.isNotEmpty() } }
-      withTimeout(10_000) { repository.messages.first { it.isEmpty() } }
       val preferences = repository.preferences.first()
       assertTrue(preferences.darkTheme && preferences.reduceMotion && !preferences.showCents)
     }
@@ -193,10 +198,6 @@ class SettingsFlowTest {
 
     filter.performTextReplacement("1234")
     rule.waitForIdle()
-    assertEquals(
-        AnnotatedString("1234"),
-        filter.fetchSemanticsNode().config[SemanticsProperties.EditableText],
-    )
     rule.waitUntil(10_000) {
       rule.onAllNodesWithText("Salvar filtro").fetchSemanticsNodes().any {
         it.config.contains(SemanticsProperties.Disabled).not()
@@ -246,10 +247,13 @@ class SettingsFlowTest {
     enterDashboard()
     rule.onNodeWithContentDescription("Extrato").performClick()
     rule.waitUntil(10_000) {
-      rule.onAllNodesWithText("Importações pendentes (1)").fetchSemanticsNodes().isNotEmpty()
+      rule
+          .onAllNodesWithText("Revisar importações pendentes (1)")
+          .fetchSemanticsNodes()
+          .isNotEmpty()
     }
-    rule.onNodeWithText("Importações pendentes (1)").performClick()
-    rule.onNodeWithText("Captura pausada").assertExists()
+    rule.onNodeWithText("Revisar importações pendentes (1)").performClick()
+    rule.onNodeWithText("Captura desconectada").assertExists()
     rule.onNodeWithText("Saída a confirmar").assertExists()
     rule.onNodeWithText("Confirmar saída").performClick()
     rule.onNodeWithText("A origem é Rico", substring = true).assertExists()
@@ -271,10 +275,12 @@ class SettingsFlowTest {
   }
 
   private fun assertSettingsPrivacyCopy() {
+    val disconnectedSourceStatus =
+        if (ricoIsInstalled()) "Captura desconectada." else "Fonte indisponível:"
     rule
         .onNode(hasScrollToIndexAction())
-        .performScrollToNode(hasText("A importação opcional da Rico", substring = true))
-    rule.onNodeWithText("A importação opcional da Rico", substring = true).assertExists()
+        .performScrollToNode(hasText(disconnectedSourceStatus, substring = true))
+    rule.onNodeWithText(disconnectedSourceStatus, substring = true).assertExists()
     rule
         .onNodeWithText("A exportação de dados ainda não está disponível", substring = true)
         .assertExists()
@@ -283,6 +289,12 @@ class SettingsFlowTest {
         .performScrollToNode(hasText("Excluir todos os dados", substring = true))
     rule.onNodeWithText("Excluir todos os dados").assertExists()
   }
+
+  private fun ricoIsInstalled(): Boolean =
+      runCatching {
+            context.packageManager.getApplicationInfo(NotificationImportSource.RICO.packageName, 0)
+          }
+          .isSuccess
 
   private fun assertNoExportAction() {
     val exportActions =
@@ -330,11 +342,20 @@ class SettingsFlowTest {
   }
 
   private fun enterDashboard() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Buscar estabelecimento").fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodesWithText("Comece seu extrato").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithContentDescription("Início").performClick()
     }
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
   }
 

@@ -40,7 +40,6 @@ internal object AlluTokens {
   }
 
   object Size {
-    val assistantBubbleMaxWidth: Dp = 320.dp
     val skeletonTitleHeight: Dp = 20.dp
     val skeletonLineHeight: Dp = 14.dp
   }

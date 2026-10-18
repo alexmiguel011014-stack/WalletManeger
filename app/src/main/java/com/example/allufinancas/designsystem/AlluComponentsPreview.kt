@@ -12,7 +12,10 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
+
+internal const val AlluPreviewViewportTestTag = "allu-preview-viewport"
 
 @Preview(name = "Claro · 360dp", showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
@@ -73,6 +76,17 @@ internal fun AlluLargeFont412Preview() = AlluPhonePreview(darkTheme = false)
 @Composable
 internal fun AlluDarkLargeFont360Preview() = AlluPhonePreview(darkTheme = true)
 
+@Preview(
+    name = "Escuro · fonte grande · 412dp",
+    showBackground = true,
+    widthDp = 412,
+    heightDp = 900,
+    fontScale = 1.5f,
+    uiMode = Configuration.UI_MODE_NIGHT_YES,
+)
+@Composable
+internal fun AlluDarkLargeFont412Preview() = AlluPhonePreview(darkTheme = true)
+
 @Preview(name = "Estados · claro", showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 internal fun AlluStatesLightPreview() = AlluStatePreview(darkTheme = false)
@@ -107,13 +121,14 @@ internal fun AlluReducedMotionConfirmationPreview() =
     )
 
 @Composable
-private fun AlluPhonePreview(
+internal fun AlluPhonePreview(
     darkTheme: Boolean,
     reduceMotion: Boolean = false,
     showConfirmation: Boolean = false,
 ) {
   AlluTheme(darkTheme = darkTheme, reduceMotion = reduceMotion) {
     AlluAppScaffold(
+        modifier = Modifier.testTag(AlluPreviewViewportTestTag),
         topBar = { GreetingHeader("Bom dia,", "Ana", "Visão geral da demonstração") },
         bottomBar = {
           AlluBottomNavigation(
@@ -122,7 +137,6 @@ private fun AlluPhonePreview(
                   AlluNavigationItem("Extrato", { Text("≡") }, selected = false, onClick = {}),
                   AlluNavigationItem("Planos", { Text("◎") }, selected = false, onClick = {}),
                   AlluNavigationItem("Avisos", { Text("◇") }, selected = false, onClick = {}),
-                  AlluNavigationItem("Assistente", { Text("✦") }, selected = false, onClick = {}),
               ),
           )
         },
@@ -151,11 +165,6 @@ private fun AlluPhonePreview(
         ChartContainer("Orçamento", description = "Uso no período") {
           LinearProgressIndicator(progress = { 0.62f }, modifier = Modifier.fillMaxWidth())
         }
-        AssistantBubble(
-            "Posso resumir os dados fictícios deste mês.",
-            isUser = false,
-            supportingText = "Resposta local",
-        )
       }
     }
     if (showConfirmation) {
@@ -173,10 +182,11 @@ private fun AlluPhonePreview(
 }
 
 @Composable
-private fun AlluStatePreview(darkTheme: Boolean) {
+internal fun AlluStatePreview(darkTheme: Boolean) {
   AlluTheme(darkTheme = darkTheme) {
     Column(
         Modifier.fillMaxSize()
+            .testTag(AlluPreviewViewportTestTag)
             .verticalScroll(rememberScrollState())
             .padding(AlluTokens.Spacing.page),
         verticalArrangement = Arrangement.spacedBy(AlluTokens.Spacing.md),

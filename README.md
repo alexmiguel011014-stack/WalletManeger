@@ -18,7 +18,7 @@ The APK is produced at `app\build\outputs\apk\debug\app-debug.apk`. Install on a
 
 ## Evaluation
 
-Start from an empty ledger. Add an income and an expense, check that the balance and current-month totals update, edit and delete a transaction, then create a category budget. Restart the app to confirm local data persists. Settings can delete local transactions, budgets, goals, alerts, review decisions, pending imports, and assistant messages while keeping built-in categories and display preferences.
+Start from an empty ledger. Add an income and an expense, check that the balance and current-month totals update, edit and delete a transaction, then create a category budget. Restart the app to confirm local data persists. Settings can delete local transactions, budgets, goals, alerts, review decisions, and pending imports while keeping built-in categories and display preferences.
 
 ## Optional Rico notification review
 
@@ -37,8 +37,6 @@ For the platform boundary, see Android's [NotificationListenerService reference]
 ### Device validation
 
 Use only a real transaction the owner already planned or has explicitly approved; do not spend money to create a test. On a connected device/emulator, first confirm the installed source package with `adb shell pm path br.com.rico.mobile`, then test: permission denied/allowed/revoked; another app notification; a purchase that stays out of totals until confirmation; a received-money draft; neutral bill/transfer; ignored declined/OTP/promotion notices; duplicate/replay; Android-shade dismissal; disconnect while keeping and discarding drafts; reset; and large-font/TalkBack readability. Record the device/API level and hide personal values in any evidence.
-
-The local assistant calculates monthly totals, category totals, largest expense, recurring transactions, remaining category budget, and explains its local data source. It gives setup guidance when the requested period has no records. No model, bank connection, or external API is called.
 
 The [product brief](PRODUCT.md), [design brief](DESIGN.md), and [execution plan](GOALS.md) describe decisions and remaining acceptance work. Final visual sign-off requires the owner to review the installed Android screens. Direct bank integrations, signing, and publication would require a separate security/legal/product plan.
 

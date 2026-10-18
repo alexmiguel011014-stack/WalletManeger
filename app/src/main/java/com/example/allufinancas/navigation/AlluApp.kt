@@ -8,11 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -41,8 +41,6 @@ import com.example.allufinancas.designsystem.*
 import com.example.allufinancas.feature.alerts.Alerts
 import com.example.allufinancas.feature.alerts.AlertsViewModel
 import com.example.allufinancas.feature.alerts.ReviewInbox
-import com.example.allufinancas.feature.assistant.Assistant
-import com.example.allufinancas.feature.assistant.AssistantViewModel
 import com.example.allufinancas.feature.budgets.Budgets
 import com.example.allufinancas.feature.budgets.BudgetsViewModel
 import com.example.allufinancas.feature.home.Home
@@ -64,17 +62,25 @@ internal enum class Page(val label: String, val route: String, val icon: ImageVe
   TRANSACTIONS("Extrato", "transactions", Icons.Filled.List),
   BUDGETS("Planos", "budgets", Icons.Filled.DateRange),
   ALERTS("Avisos", "alerts", Icons.Filled.Notifications),
-  ASSISTANT("Assistente", "assistant", Icons.Filled.Send),
+  /** Retained only to restore saved navigation state from versions that exposed this tab. */
+  ASSISTANT("Assistente", "assistant", Icons.AutoMirrored.Filled.Send),
   SETTINGS("Ajustes", "settings", Icons.Filled.Settings),
 }
 
-private val tabs = listOf(Page.HOME, Page.TRANSACTIONS, Page.BUDGETS, Page.ALERTS, Page.ASSISTANT)
+private val tabs = listOf(Page.HOME, Page.TRANSACTIONS, Page.BUDGETS, Page.ALERTS)
+private const val LEGACY_ASSISTANT_ROUTE = "assistant"
 private const val PRIVACY_ROUTE = "privacy"
 private const val REVIEW_ROUTE = "alerts/review"
 private const val IMPORTS_ROUTE = "imports"
 private const val TRANSACTION_DETAIL_ROUTE = "transaction/{transactionId}"
 
 internal fun transactionDetailRoute(id: String) = "transaction/${Uri.encode(id)}"
+
+internal fun selectedTabForRoute(route: String?, current: Page): Page =
+    when (route) {
+      LEGACY_ASSISTANT_ROUTE -> Page.HOME
+      else -> tabs.firstOrNull { it.route == route } ?: current
+    }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +91,7 @@ fun AlluApp(model: AlluViewModel? = null) {
   val stateModel = model ?: viewModel(factory = appFactory)
   val factory = remember(stateModel) { AlluViewModelFactory(stateModel.dataSource) }
   val local = remember { context.getSharedPreferences("allu_welcome", Context.MODE_PRIVATE) }
-  var entered by rememberSaveable { mutableStateOf(local.getBoolean("entered", false)) }
+  var entered by remember { mutableStateOf(local.getBoolean("entered", false)) }
   var firstEditorRequest by rememberSaveable { mutableIntStateOf(0) }
   var privacy by rememberSaveable { mutableStateOf(false) }
   val settings by stateModel.preferences.collectAsStateWithLifecycle()
@@ -147,7 +153,9 @@ private fun AlluNavigation(
   val backStackEntry by navController.currentBackStackEntryAsState()
   val route = backStackEntry?.destination?.route
   var selectedTab by rememberSaveable { mutableStateOf(Page.HOME) }
-  LaunchedEffect(route) { tabs.firstOrNull { it.route == route }?.let { selectedTab = it } }
+  LaunchedEffect(route) {
+    selectedTab = selectedTabForRoute(route, selectedTab)
+  }
 
   fun selectTab(tab: Page) {
     if (
@@ -305,6 +313,10 @@ private fun AlluNavigation(
                     it.pendingReviewCount,
                     stateModel::setAlertDismissed,
                     onOpenReview = { navController.navigate(REVIEW_ROUTE) },
+                    onAddTransaction = {
+                      editorRequest += 1
+                      selectTab(Page.TRANSACTIONS)
+                    },
                 )
               }
             }
@@ -340,21 +352,12 @@ private fun AlluNavigation(
                 )
               }
             }
-            composable(Page.ASSISTANT.route) {
-              val screenModel: AssistantViewModel = viewModel(factory = factory)
-              val screen by screenModel.state.collectAsStateWithLifecycle()
-              ScreenContent(screen) {
-                Assistant(
-                    it.messages,
-                    it.transactions,
-                    it.budgets,
-                    it.categories,
-                    stateModel::sendMessage,
-                    onAddTransaction = {
-                      editorRequest += 1
-                      selectTab(Page.TRANSACTIONS)
-                    },
-                )
+            composable(LEGACY_ASSISTANT_ROUTE) {
+              LaunchedEffect(Unit) {
+                navController.navigate(Page.HOME.route) {
+                  popUpTo(LEGACY_ASSISTANT_ROUTE) { inclusive = true }
+                  launchSingleTop = true
+                }
               }
             }
             composable(Page.SETTINGS.route) {

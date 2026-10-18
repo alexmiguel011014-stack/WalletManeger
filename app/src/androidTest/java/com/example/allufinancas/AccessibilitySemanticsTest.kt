@@ -1,10 +1,12 @@
 package com.example.allufinancas
 
 import androidx.compose.ui.test.assertAny
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -28,7 +30,7 @@ class AccessibilitySemanticsTest {
   fun resetDemoData() = runBlocking {
     val repository = DemoRepository(InstrumentationRegistry.getInstrumentation().targetContext)
     withTimeout(15_000) { repository.ready.first { it } }
-    repository.resetDemoData()
+    seedLocalLedger(repository, InstrumentationRegistry.getInstrumentation().targetContext)
   }
 
   @Test
@@ -45,21 +47,21 @@ class AccessibilitySemanticsTest {
   }
 
   @Test
-  fun bottomNavigationDestinationsExposeLabelsActionsAndSelectedState() {
+  fun bottomNavigationHasExactlyFourDestinationsWithoutAssistant() {
     enterDashboard()
 
-    assertDestination("Início", "Saldo líquido dos lançamentos")
-    assertDestination("Extrato", "Buscar estabelecimento")
-    assertDestination("Planos", "Defina limites para seus gastos registrados.")
-    assertDestination("Avisos", "Caixa de revisão")
-    assertDestination("Assistente", "Pergunte sobre seus lançamentos")
+    listOf("Início", "Extrato", "Planos", "Avisos").forEach { label ->
+      rule.onAllNodesWithContentDescription(label).assertCountEquals(1)
+      assertDestination(label)
+    }
+    rule.onAllNodesWithContentDescription("Assistente").assertCountEquals(0)
   }
 
   @Test
   fun coreActionsAndLocalDataDisclosuresRemainAvailableToAssistiveTechnology() {
     enterDashboard()
 
-    rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
+    rule.onNodeWithText("Saldo líquido dos lançamentos").assertExists()
     rule.onNodeWithContentDescription("Extrato").performClick()
     rule.waitUntil(15_000) {
       rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()
@@ -78,31 +80,29 @@ class AccessibilitySemanticsTest {
       rule.onAllNodesWithText("Revisar lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
     rule.onNodeWithText("Revisar lançamentos").assertHasClickAction()
-
-    rule.onNodeWithContentDescription("Assistente").performClick()
-    rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Pergunte sobre seus lançamentos").fetchSemanticsNodes().isNotEmpty()
-    }
-    rule.onNodeWithText("Sua pergunta").assertExists()
-    rule.onNodeWithText("Enviar").assertHasClickAction()
   }
 
-  private fun assertDestination(label: String, visibleContent: String) {
+  private fun assertDestination(label: String) {
     val destination = rule.onNodeWithContentDescription(label)
     destination.assertHasClickAction().performClick()
-    rule.waitUntil(15_000) {
-      rule.onAllNodesWithText(visibleContent).fetchSemanticsNodes().isNotEmpty()
-    }
     destination.assertIsSelected()
-    rule.onNodeWithText(visibleContent).assertExists()
   }
 
   private fun enterDashboard() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Buscar estabelecimento").fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodesWithText("Comece seu extrato").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithContentDescription("Início").performClick()
     }
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
   }
 }

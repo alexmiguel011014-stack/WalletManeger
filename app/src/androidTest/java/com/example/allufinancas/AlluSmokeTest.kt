@@ -12,13 +12,11 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import com.example.allufinancas.core.brl
 import com.example.allufinancas.data.DemoAnalysis
 import com.example.allufinancas.data.DemoRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -38,16 +36,13 @@ class AlluSmokeTest {
       repository.setReduceMotion(false)
       repository.setShowCents(true)
     }
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
-    }
+    enterHome()
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
-    rule.onNodeWithText("DADOS LOCAIS", substring = true).assertExists()
-    assertTrue(rule.onAllNodesWithText(brl(0)).fetchSemanticsNodes().isNotEmpty())
+    rule.onNodeWithText("Dados ficam neste dispositivo").assertExists()
+    rule.onNodeWithText("Ainda não há lançamentos salvos.").assertExists()
     rule.onNodeWithText("Extrato").performClick()
-    rule.onNodeWithText("Buscar estabelecimento").assertExists()
     rule.onNodeWithText("Comece seu extrato").assertExists()
     rule.onNodeWithText("Planos").performClick()
     rule.onNodeWithText("Adicionar limite").assertExists()
@@ -66,8 +61,6 @@ class AlluSmokeTest {
             substring = true,
         )
         .assertExists()
-    rule.onNodeWithText("Assistente").performClick()
-    rule.onNodeWithText("Pergunte sobre seus lançamentos").assertExists()
   }
 
   @Test
@@ -78,9 +71,7 @@ class AlluSmokeTest {
       withTimeout(15_000) { repository.ready.first { it } }
       seedLocalLedger(repository, context)
     }
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
-    }
+    enterHome()
     rule.waitUntil(15_000) {
       rule.onAllNodesWithText(LocalLedgerFixtures.MONTH_LABEL).fetchSemanticsNodes().isNotEmpty()
     }
@@ -118,9 +109,11 @@ class AlluSmokeTest {
 
     rule.activityRule.scenario.recreate()
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodes(hasScrollToIndexAction()).fetchSemanticsNodes().isNotEmpty()
     }
     val restoredHomeList = rule.onNode(hasScrollToIndexAction())
+    restoredHomeList.performScrollToNode(hasText(LocalLedgerFixtures.MONTH_LABEL))
+    rule.onNodeWithText(LocalLedgerFixtures.MONTH_LABEL).assertExists()
     restoredHomeList.performScrollToNode(hasText("Despesas por categoria"))
     rule.onNodeWithText("Despesas por categoria").assertExists()
     restoredHomeList.performScrollToNode(hasText(LocalLedgerFixtures.PREVIOUS_MONTH_LABEL))
@@ -137,5 +130,20 @@ class AlluSmokeTest {
         hasText(LocalLedgerFixtures.previousMonthDate(26), substring = true)
     )
     rule.onNodeWithText(LocalLedgerFixtures.previousMonthDate(26), substring = true).assertExists()
+  }
+
+  private fun enterHome() {
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar", useUnmergedTree = true).performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Buscar estabelecimento").fetchSemanticsNodes().isNotEmpty() ||
+            rule.onAllNodesWithText("Comece seu extrato").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithContentDescription("Início").performClick()
+    }
   }
 }

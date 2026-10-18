@@ -6,6 +6,7 @@ import androidx.compose.ui.test.hasScrollToIndexAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -17,12 +18,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.example.allufinancas.data.DemoAnalysis
 import com.example.allufinancas.data.DemoRepository
-import com.example.allufinancas.data.MessageRole
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.After
-import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -43,7 +42,7 @@ class BudgetFlowTest {
   @After fun restoreDemoStateAfterTest() = runBlocking { restoreDemoState() }
 
   @Test
-  fun budgetEditUpdatesHomeAndAssistantAndLocalDataDeletionCanCancelOrConfirm() {
+  fun budgetEditUpdatesHomeAndLocalDataDeletionCanCancelOrConfirm() {
     enterDemo()
     rule.onNodeWithText("Planos").performClick()
     rule.onAllNodesWithText("Alterar limite")[0].performScrollTo().performClick()
@@ -61,21 +60,6 @@ class BudgetFlowTest {
     rule.waitUntil(10_000) {
       rule.onAllNodesWithText(updatedBudget, substring = true).fetchSemanticsNodes().isNotEmpty()
     }
-
-    rule.onNodeWithText("Assistente").performClick()
-    rule
-        .onNodeWithText("Sua pergunta")
-        .performTextInput("Quanto resta do orçamento de alimentação?")
-    rule.onNodeWithText("Enviar").performClick()
-    val remaining = DemoAnalysis.money(34_458)
-    val persistedMessages = runBlocking {
-      withTimeout(10_000) {
-        repository.messages.first { messages ->
-          messages.any { it.role == MessageRole.ASSISTANT && remaining in it.text }
-        }
-      }
-    }
-    assertTrue(persistedMessages.any { it.role == MessageRole.ASSISTANT && remaining in it.text })
 
     rule.onNodeWithText("Planos").performClick()
     openRestoreConfirmation()
@@ -103,11 +87,16 @@ class BudgetFlowTest {
   }
 
   private fun enterDemo() {
-    if (rule.onAllNodesWithText("Começar a cadastrar").fetchSemanticsNodes().isNotEmpty()) {
-      rule.onNodeWithText("Começar a cadastrar").performClick()
+    if (rule.onAllNodesWithText("Adicionar lançamento").fetchSemanticsNodes().isNotEmpty()) {
+      rule.onNodeWithText("Adicionar lançamento").performClick()
+      rule.waitUntil(15_000) {
+        rule.onAllNodesWithText("Novo lançamento").fetchSemanticsNodes().isNotEmpty()
+      }
+      rule.onNodeWithText("Cancelar").performClick()
+      rule.onNodeWithContentDescription("Início").performClick()
     }
     rule.waitUntil(15_000) {
-      rule.onAllNodesWithText("Visão geral").fetchSemanticsNodes().isNotEmpty()
+      rule.onAllNodesWithText("Saldo líquido dos lançamentos").fetchSemanticsNodes().isNotEmpty()
     }
   }
 

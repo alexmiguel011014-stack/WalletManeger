@@ -16,7 +16,7 @@ Primary user: a Portuguese-speaking person exploring a simpler view of personal 
 
 ## Product Purpose
 
-Deliver an installable Android prototype that combines a concise money overview, transaction exploration, budgeting, explanatory alerts, and a conversational entry point. The first deliverable uses fictional local data and is evaluated as a demo APK.
+Deliver an installable Android prototype that combines a concise money overview, transaction exploration, budgeting, and explanatory alerts. The first deliverable uses fictional local data and is evaluated as a demo APK.
 
 ## Positioning
 
@@ -28,7 +28,7 @@ The owner evaluates a locally installed APK on an Android emulator or phone. A u
 
 ## Capabilities and Constraints
 
-- Offline fictional dataset, local calculations, local assistant responses, and resettable demo state.
+- Offline fictional dataset, local calculations, and resettable demo state.
 - No live bank connection, payments, investment execution, or WhatsApp interaction in this release.
 - Brazilian Portuguese and BRL display.
 - Debug APK is the current deliverable. The release name is wallet Manager; package identifier, signing method, and publication route remain open decisions.

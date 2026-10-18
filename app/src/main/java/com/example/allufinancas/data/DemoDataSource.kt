@@ -16,7 +16,6 @@ interface DemoDataSource {
   val alerts: Flow<List<Alert>>
   val reconciliationCases: Flow<List<ReconciliationCase>>
   val goals: Flow<List<Goal>>
-  val messages: Flow<List<AssistantMessage>>
   val preferences: Flow<DisplayPreferences>
   val materializedAt: Flow<Instant?>
   /** The one source the owner has enabled locally, separate from Android's system permission. */
@@ -46,8 +45,6 @@ interface DemoDataSource {
   suspend fun reopenReconciliationCase(caseId: String)
 
   suspend fun setAlertDismissed(alertId: String, dismissed: Boolean)
-
-  suspend fun sendMessage(text: String): AssistantAnswer
 
   suspend fun resetDemoData()
 

@@ -9,7 +9,6 @@ import com.example.allufinancas.data.ImportNoticeConfirmation
 import com.example.allufinancas.data.ImportNoticeResolution
 import com.example.allufinancas.data.NotificationImportSource
 import com.example.allufinancas.feature.alerts.AlertsViewModel
-import com.example.allufinancas.feature.assistant.AssistantViewModel
 import com.example.allufinancas.feature.budgets.BudgetsViewModel
 import com.example.allufinancas.feature.home.HomeViewModel
 import com.example.allufinancas.feature.settings.SettingsViewModel
@@ -79,11 +78,6 @@ class AlluViewModel(internal val dataSource: DemoDataSource) : ViewModel() {
   fun setAlertDismissed(alertId: String, dismissed: Boolean) = viewModelScope.launch {
     runCatching { dataSource.setAlertDismissed(alertId, dismissed) }
         .onFailure { _notice.value = "Não foi possível atualizar o aviso" }
-  }
-
-  fun sendMessage(text: String) = viewModelScope.launch {
-    runCatching { dataSource.sendMessage(text) }
-        .onFailure { _notice.value = "Não foi possível responder agora" }
   }
 
   fun resetDemo() = viewModelScope.launch {
@@ -176,8 +170,6 @@ class AlluViewModelFactory(private val dataSource: DemoDataSource) : ViewModelPr
               TransactionsViewModel(dataSource)
           modelClass.isAssignableFrom(BudgetsViewModel::class.java) -> BudgetsViewModel(dataSource)
           modelClass.isAssignableFrom(AlertsViewModel::class.java) -> AlertsViewModel(dataSource)
-          modelClass.isAssignableFrom(AssistantViewModel::class.java) ->
-              AssistantViewModel(dataSource)
           modelClass.isAssignableFrom(SettingsViewModel::class.java) ->
               SettingsViewModel(dataSource)
           modelClass.isAssignableFrom(

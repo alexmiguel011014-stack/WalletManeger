@@ -21,9 +21,11 @@ internal fun Alerts(
     pendingReviewCount: Int,
     onDismiss: (String, Boolean) -> Unit,
     onOpenReview: () -> Unit,
+    onAddTransaction: () -> Unit,
 ) {
   var showDismissed by rememberSaveable { mutableStateOf(false) }
   val visible = alerts.filter { it.dismissed == showDismissed }
+  val hasArchivedAlerts = alerts.any(Alert::dismissed)
   LazyColumn(
       Modifier.fillMaxSize(),
       contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
@@ -44,7 +46,7 @@ internal fun Alerts(
             }
           }
         }
-    if (alerts.isNotEmpty())
+    if (hasArchivedAlerts)
         item {
           Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = { showDismissed = false }) { Text("Ativos") }
@@ -64,10 +66,12 @@ internal fun Alerts(
                   when {
                     showDismissed -> "Os avisos arquivados por você aparecerão aqui."
                     alerts.isEmpty() ->
-                        "Avisos aparecem quando regras locais encontram padrões nos lançamentos salvos. A ausência de avisos não garante ausência de risco."
+                        "Adicione um lançamento para o app procurar padrões locais. A ausência de avisos não garante ausência de risco."
                     else ->
                         "Todos os avisos atuais foram arquivados. A ausência de avisos ativos não é uma avaliação de risco zero."
                   },
+              actionLabel = if (alerts.isEmpty()) "Adicionar lançamento" else null,
+              onAction = onAddTransaction,
           )
         }
     itemsIndexed(visible, key = { _, alert -> alert.id }) { index, alert ->

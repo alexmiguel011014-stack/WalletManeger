@@ -188,24 +188,6 @@ data class Goal(
     val savedCents: Long,
 )
 
-data class AssistantMessage(
-    val id: Long = 0,
-    val role: MessageRole,
-    val text: String,
-    val createdAt: String,
-    val citationTransactionIds: List<String> = emptyList(),
-)
-
-enum class MessageRole {
-  USER,
-  ASSISTANT,
-}
-
-data class AssistantAnswer(
-    val text: String,
-    val citationTransactionIds: List<String> = emptyList(),
-)
-
 data class MonthSummary(
     val month: String,
     val incomeCents: Long,

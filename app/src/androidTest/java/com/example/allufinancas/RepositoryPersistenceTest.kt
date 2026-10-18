@@ -47,9 +47,6 @@ class RepositoryPersistenceTest {
                 LocalLedgerFixtures.MONTH,
             ),
         )
-        val assistantAnswer = first.sendMessage("Quanto gastei com transporte?")
-        assertTrue(assistantAnswer.text.contains(DemoAnalysis.money(2_890)))
-        assertEquals(listOf("t07"), assistantAnswer.citationTransactionIds)
         assertTrue(first.reconciliationCases.first().first { it.id == "uncategorized-t07" }.decided)
 
         first.decideReconciliationCase("duplicate-t04-t05")
@@ -144,7 +141,6 @@ class RepositoryPersistenceTest {
               "budgets",
               "alerts",
               "goals",
-              "assistant_messages",
               "reconciliation_decisions",
           )
           .forEach { table -> assertEquals("$table should be cleared", 0, tableCount(db, table)) }
@@ -153,7 +149,7 @@ class RepositoryPersistenceTest {
           DefaultCategories.all.map { it.id }.sorted(),
           migrated.dao().allCategories().map { it.id }.sorted(),
       )
-      assertEquals(4, db.version)
+      assertEquals(5, db.version)
       val prefs = DemoPreferences(context).state.first()
       assertTrue(prefs.darkTheme && prefs.reduceMotion && !prefs.showCents)
     } finally {
@@ -199,7 +195,6 @@ class RepositoryPersistenceTest {
     first.setTransactionCategory("t02", "casa")
     val alertId = first.alerts.first().first().id
     first.setAlertDismissed(alertId, true)
-    first.sendMessage("Quanto gastei no mês?")
     first.setDarkTheme(true)
     first.setReduceMotion(true)
     first.setShowCents(false)
@@ -216,7 +211,6 @@ class RepositoryPersistenceTest {
         reopened.transactions.first().first { it.id == "t02" }.sourceCategoryId,
     )
     assertTrue(reopened.alerts.first().first { it.id == alertId }.dismissed)
-    assertEquals(2, reopened.messages.first().size)
     assertTrue(reopened.preferences.first().darkTheme)
     assertTrue(reopened.preferences.first().reduceMotion)
     assertTrue(!reopened.preferences.first().showCents)
@@ -228,7 +222,6 @@ class RepositoryPersistenceTest {
         DefaultCategories.all.map { it.id }.sorted(),
         reopened.categories.first().map { it.id }.sorted(),
     )
-    assertTrue(reopened.messages.first().isEmpty())
     reopened.setDarkTheme(false)
     reopened.setReduceMotion(false)
     reopened.setShowCents(true)

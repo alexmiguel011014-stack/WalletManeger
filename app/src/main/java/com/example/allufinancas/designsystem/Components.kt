@@ -154,24 +154,20 @@ internal fun AmountRow(
     supportingText: String? = null,
     amountDescription: String = "$label: $amount",
 ) {
-  Row(
+  Column(
       modifier.fillMaxWidth().defaultMinSize(minHeight = AlluTokens.Spacing.touchTarget).semantics(
           mergeDescendants = true
       ) {
         contentDescription = amountDescription
       },
-      verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.SpaceBetween,
   ) {
-    Column(Modifier.weight(1f)) {
-      Text(label, style = MaterialTheme.typography.bodyMedium)
-      supportingText?.let {
-        Text(
-            it,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
+    Text(label, style = MaterialTheme.typography.bodyMedium)
+    supportingText?.let {
+      Text(
+          it,
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
     }
     val reduceMotion = LocalAlluReduceMotion.current
     Crossfade(
@@ -187,9 +183,9 @@ internal fun AmountRow(
     ) { currentAmount ->
       Text(
           currentAmount,
+          modifier = Modifier.fillMaxWidth(),
           style = MaterialTheme.typography.titleMedium,
           fontWeight = FontWeight.SemiBold,
-          maxLines = 1,
           textAlign = TextAlign.End,
       )
     }
@@ -445,46 +441,6 @@ internal fun ChartContainer(
       }
       Spacer(Modifier.height(AlluTokens.Spacing.sm))
       content()
-    }
-  }
-}
-
-@Composable
-internal fun AssistantBubble(
-    message: String,
-    isUser: Boolean,
-    modifier: Modifier = Modifier,
-    supportingText: String? = null,
-) {
-  Row(
-      modifier.fillMaxWidth(),
-      horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
-  ) {
-    Surface(
-        modifier =
-            Modifier.widthIn(max = AlluTokens.Size.assistantBubbleMaxWidth).semantics(
-                mergeDescendants = true
-            ) {},
-        color =
-            if (isUser) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.surfaceVariant,
-        contentColor =
-            if (isUser) MaterialTheme.colorScheme.onPrimary
-            else MaterialTheme.colorScheme.onSurface,
-        shape = RoundedCornerShape(AlluTokens.Radius.card),
-    ) {
-      Column(Modifier.padding(AlluTokens.Spacing.md)) {
-        Text(message, style = MaterialTheme.typography.bodyLarge)
-        supportingText?.let {
-          Text(
-              it,
-              style = MaterialTheme.typography.labelSmall,
-              color =
-                  if (isUser) MaterialTheme.colorScheme.onPrimary
-                  else MaterialTheme.colorScheme.onSurfaceVariant,
-          )
-        }
-      }
     }
   }
 }
